@@ -25,7 +25,7 @@ PDF.js 4.10.38 is loaded from cdnjs when the user selects a PDF. This requires a
 - JSON backup includes both class meetings and planner tasks. JSON import can restore both.
 
 ## Live timetable and installable app
-- Default landing view is **Today**, with a switch to the seven-day weekly calendar. Class meetings remain on their recurring weekdays; dated personal plans appear as separate calendar overlays, and all-day plans are shown in the day heading.
+- Default landing view is **Today**, with a switch to the seven-day weekly calendar. Class meetings remain in the timetable on their recurring weekdays. Dated personal plans appear in a separate agenda below the timetable, where overlapping class times are called out without covering either event.
 - Use **Now** to jump to the live time marker and current day. The marker stays visible at the nearest calendar edge before 7 AM and after 7 PM. The 12/24-hour preference is saved on the device and applies to the clock, calendar, agenda, and schedule details.
 - The timetable supports native full-screen mode where available, with a CSS full-screen fallback. **Display view** opens a clean schedule-only page at `/?view=display`; it refreshes schedule data every 30 seconds while open.
 - Use the **Install app** button for the browser install prompt when supported, or device-specific instructions when the browser does not provide a prompt. On iOS, use Safari's Share menu and choose Add to Home Screen.

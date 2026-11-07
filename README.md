@@ -8,7 +8,7 @@ A calm, practical place for CLSU students to see their class schedule and keep p
 
 - **Live class timetable:** View today's schedule or the full seven-day week, with a Philippine-time clock, current-time marker, and summary of the class in progress or coming up next.
 - **Personal planning:** Add dated study sessions, assignments, reminders, errands, and other activities. Mark them complete, edit them, or remove them; all-day plans are supported.
-- **One calendar for both:** See timed personal plans alongside fixed class meetings. Overlapping plans are highlighted so you can adjust them yourself; enrolled classes are never silently moved.
+- **Clear class and personal views:** Class meetings stay in the timetable, while dated personal plans appear in a separate agenda below it. Any time conflict is called out in the agenda, so events never cover each other and enrolled classes are never silently moved.
 - **Made for your day:** Jump to **Now**, choose a 12- or 24-hour clock, or expand the timetable to full screen.
 - **At-a-glance display:** Open the schedule-only display view in a live web view or a dedicated browser window. It refreshes while open, keeping the schedule visible without the rest of the planner interface.
 - **Installable and offline-friendly:** Install the planner on supported devices. The app shell and most recently saved schedule can be viewed offline; schedule edits require a connection.
