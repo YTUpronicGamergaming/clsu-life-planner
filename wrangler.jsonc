@@ -1,0 +1,23 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "clsu-life-planner",
+	"main": "src/index.js",
+	"compatibility_date": "2026-07-15",
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "clsu-life-planner-db",
+			"database_id": "7827acdf-a860-4213-8f41-ae2a4c8efcaf"
+		}
+	],
+	"assets": {
+		"directory": "./public/",
+		"binding": "ASSETS",
+		"run_worker_first": [
+			"/api/*"
+		]
+	},
+	"observability": {
+		"enabled": true
+	}
+}
