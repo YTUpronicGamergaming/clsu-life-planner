@@ -82,20 +82,40 @@ function render(schedule) {
   get("#noTasks").hidden = tasks.length > 0;
 }
 
+async function checkMaintenance() {
+  try {
+    const response = await fetch("/api/status", {
+      cache: "no-store",
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok) return null;
+    const mode = await response.json();
+    const maintenance = mode.maintenance === true;
+    get("#maintenanceNotice").hidden = !maintenance;
+    get("#mainPlannerLink").hidden = maintenance;
+    if (
+      !maintenance &&
+      ["/fallback", "/fallback.html"].includes(location.pathname)
+    )
+      location.replace("/");
+    return maintenance;
+  } catch {
+    return null;
+  }
+}
+
 async function loadSchedule() {
   const status = get("#status");
   const refresh = get("#refresh");
   status.textContent = "Loading schedule…";
   refresh.disabled = true;
   try {
-    const modeResponse = await fetch("/api/status", {
-      cache: "no-store",
-      signal: AbortSignal.timeout(10000),
-    });
-    const mode = modeResponse.ok ? await modeResponse.json() : {};
-    const maintenance = mode.maintenance === true;
-    get("#maintenanceNotice").hidden = !maintenance;
-    get("#mainPlannerLink").hidden = maintenance;
+    const maintenance = await checkMaintenance();
+    if (
+      maintenance === false &&
+      ["/fallback", "/fallback.html"].includes(location.pathname)
+    )
+      return;
 
     const response = await fetch("/api/display", {
       credentials: "same-origin",
@@ -131,4 +151,7 @@ async function loadSchedule() {
 }
 
 get("#refresh").addEventListener("click", loadSchedule);
+setInterval(() => {
+  if (document.visibilityState === "visible") checkMaintenance();
+}, 15000);
 await loadSchedule();

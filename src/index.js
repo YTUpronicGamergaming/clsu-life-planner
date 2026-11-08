@@ -24,25 +24,6 @@ async function secureResponse(response) {
   for (const [name, value] of Object.entries(SECURITY_HEADERS))
     headers.set(name, value);
   if ((headers.get("content-type") || "").includes("text/html")) {
-    const html = await response.clone().text();
-    const inlineModule = html.match(
-      /<script\s+type=["']module["']\s*>([\s\S]*?)<\/script>/i,
-    );
-    const scriptHash = inlineModule
-      ? btoa(
-          String.fromCharCode(
-            ...new Uint8Array(
-              await crypto.subtle.digest(
-                "SHA-256",
-                new TextEncoder().encode(inlineModule[1]),
-              ),
-            ),
-          ),
-        )
-      : null;
-    const scriptSource = scriptHash
-      ? `'sha256-${scriptHash}'`
-      : "'self' https://cdnjs.cloudflare.com";
     headers.set(
       "content-security-policy",
       [
@@ -51,7 +32,7 @@ async function secureResponse(response) {
         "object-src 'none'",
         "frame-ancestors 'self'",
         "form-action 'self'",
-        `script-src 'self' https://cdnjs.cloudflare.com ${scriptSource}`,
+        "script-src 'self' https://cdnjs.cloudflare.com",
         "script-src-attr 'none'",
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data:",
@@ -537,11 +518,24 @@ export default {
       const backupPath = u.pathname.toLowerCase().startsWith("/backup");
       const maintenance = env.MAINTENANCE_MODE === "true";
       const apiPath = u.pathname.startsWith("/api/");
+      const fallbackPath = ["/fallback", "/fallback.html"].includes(
+        u.pathname,
+      );
       const response = backupPath
         ? new Response("Not found", {
             status: 404,
             headers: { "cache-control": "no-store" },
           })
+        : !maintenance &&
+            fallbackPath &&
+            (req.method === "GET" || req.method === "HEAD")
+          ? new Response(null, {
+              status: 302,
+              headers: {
+                location: new URL("/", req.url).toString(),
+                "cache-control": "no-store",
+              },
+            })
         : apiPath
           ? await api(req, env)
           : maintenance &&

@@ -1,7 +1,8 @@
-const CACHE = "clsu-life-planner-shell-v9";
+const CACHE = "clsu-life-planner-shell-v10";
 const SHELL = [
   "/",
   "/index.html",
+  "/app.js",
   "/fallback.html",
   "/fallback.js",
   "/manifest.webmanifest",
@@ -42,8 +43,10 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put(request, copy));
+          if (response.ok && !response.redirected) {
+            const copy = response.clone();
+            caches.open(CACHE).then((cache) => cache.put(request, copy));
+          }
           return response;
         })
         .catch(async () =>
