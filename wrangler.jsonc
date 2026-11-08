@@ -3,6 +3,9 @@
 	"name": "clsu-life-planner",
 	"main": "src/index.js",
 	"compatibility_date": "2026-07-15",
+	"vars": {
+		"MAINTENANCE_MODE": "false"
+	},
 	"d1_databases": [
 		{
 			"binding": "DB",
@@ -13,12 +16,7 @@
 	"assets": {
 		"directory": "./public/",
 		"binding": "ASSETS",
-		"run_worker_first": [
-			"/api/*",
-			"/backup*",
-			"/fallback",
-			"/fallback.html"
-		]
+		"run_worker_first": true
 	},
 	"observability": {
 		"enabled": true

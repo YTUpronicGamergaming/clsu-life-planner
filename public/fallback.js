@@ -88,7 +88,16 @@ async function loadSchedule() {
   status.textContent = "Loading schedule…";
   refresh.disabled = true;
   try {
-    const response = await fetch("/api/session", {
+    const modeResponse = await fetch("/api/status", {
+      cache: "no-store",
+      signal: AbortSignal.timeout(10000),
+    });
+    const mode = modeResponse.ok ? await modeResponse.json() : {};
+    const maintenance = mode.maintenance === true;
+    get("#maintenanceNotice").hidden = !maintenance;
+    get("#mainPlannerLink").hidden = maintenance;
+
+    const response = await fetch("/api/display", {
       credentials: "same-origin",
       cache: "no-store",
       signal: AbortSignal.timeout(10000),
@@ -96,42 +105,10 @@ async function loadSchedule() {
     const result = await response.json();
     if (!response.ok)
       throw new Error(result.error || "Could not load schedule");
-
-    let previousSchedule = null;
-    try {
-      const recoveryKey = "clsu_schedule_recovery_cache";
-      if (result.deviceReset) {
-        const previous = localStorage.getItem("clsu_schedule_cache");
-        if (previous && !localStorage.getItem(recoveryKey)) {
-          localStorage.setItem(recoveryKey, previous);
-          previousSchedule = JSON.parse(previous);
-        }
-      } else {
-        localStorage.setItem(
-          "clsu_schedule_cache",
-          JSON.stringify(result.schedule || {}),
-        );
-      }
-    } catch {}
-
-    if (!previousSchedule && result.deviceReset) {
-      try {
-        previousSchedule = JSON.parse(
-          localStorage.getItem("clsu_schedule_recovery_cache") || "null",
-        );
-      } catch {}
-    }
-
-    if (previousSchedule && Array.isArray(previousSchedule.classes)) {
-      render(previousSchedule);
-      status.textContent =
-        "Security reset · showing this browser's cached schedule; restore it from the main planner when ready";
-    } else {
-      render(result.schedule || {});
-      status.textContent = result.deviceReset
-        ? "New private device session · no previous browser copy found"
-        : `Read-only · updated ${new Date().toLocaleTimeString("en-PH", { timeZone: "Asia/Manila" })}`;
-    }
+    render(result);
+    status.textContent = maintenance
+      ? "Read-only schedule"
+      : `Read-only · updated ${new Date().toLocaleTimeString("en-PH", { timeZone: "Asia/Manila" })}`;
   } catch (error) {
     try {
       const cached = JSON.parse(

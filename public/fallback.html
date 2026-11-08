@@ -45,6 +45,18 @@
         padding: 20px;
       }
 
+      .maintenance-notice {
+        flex: 0 0 100%;
+        margin: 0;
+        border: 1px solid #e8d29b;
+        border-radius: 9px;
+        padding: 9px 12px;
+        color: #594514;
+        background: #fff7df;
+        font-size: 0.9rem;
+        font-weight: 650;
+      }
+
       h1,
       h2,
       p {
@@ -182,6 +194,9 @@
   </head>
   <body>
     <header>
+      <p class="maintenance-notice" id="maintenanceNotice" role="status" hidden>
+        Maintenance mode · Read-only access
+      </p>
       <div>
         <h1 id="scheduleTitle">CLSU Life Planner</h1>
         <p class="muted" id="semester">Read-only schedule view</p>
@@ -189,7 +204,7 @@
       </div>
       <div class="actions">
         <button id="refresh" type="button">Refresh</button>
-          <a class="link-button secondary" href="/">Switch to main planner</a>
+        <a class="link-button secondary" id="mainPlannerLink" href="/">Switch to main planner</a>
       </div>
     </header>
 

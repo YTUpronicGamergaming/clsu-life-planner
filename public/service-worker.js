@@ -1,4 +1,4 @@
-const CACHE = "clsu-life-planner-shell-v8";
+const CACHE = "clsu-life-planner-shell-v9";
 const SHELL = [
   "/",
   "/index.html",

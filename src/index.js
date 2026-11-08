@@ -179,6 +179,38 @@ async function schedule(env, device) {
     .all();
   return { ...s, classes: results, tasks: tasks.results };
 }
+async function displaySchedule(env, device) {
+  const s = await env.DB.prepare(
+    "SELECT id,title,semester,academic_year FROM schedules WHERE device_id=? ORDER BY created_at LIMIT 1",
+  )
+    .bind(device)
+    .first();
+  if (!s)
+    return {
+      title: "My CLSU Life Planner",
+      semester: "",
+      academic_year: "",
+      classes: [],
+      tasks: [],
+    };
+  const classes = await env.DB.prepare(
+    "SELECT subject_code,subject_name,section,day,start_time,end_time,room FROM classes WHERE schedule_id=? ORDER BY day,start_time",
+  )
+    .bind(s.id)
+    .all();
+  const tasks = await env.DB.prepare(
+    "SELECT title,notes,task_date,start_time,end_time,category,completed FROM planner_tasks WHERE schedule_id=? ORDER BY task_date,COALESCE(start_time,'99:99'),created_at",
+  )
+    .bind(s.id)
+    .all();
+  return {
+    title: s.title,
+    semester: s.semester,
+    academic_year: s.academic_year,
+    classes: classes.results,
+    tasks: tasks.results,
+  };
+}
 function validateTask(t) {
   if (!t || typeof t !== "object") return "Invalid task";
   if (!String(t.title || "").trim()) return "Task title is required";
@@ -223,7 +255,19 @@ function validateTask(t) {
 async function api(req, env) {
   const u = new URL(req.url),
     p = u.pathname,
-    m = req.method;
+    m = req.method,
+    maintenance = env.MAINTENANCE_MODE === "true";
+  if (m === "GET" && p === "/api/status")
+    return json({ maintenance });
+  if (
+    maintenance &&
+    !(m === "GET" && p === "/api/display")
+  )
+    return json(
+      { error: "The planner is in read-only maintenance mode" },
+      503,
+      { "retry-after": "300" },
+    );
   if (
     m !== "GET" &&
     req.headers.get("Origin") &&
@@ -255,52 +299,10 @@ async function api(req, env) {
       .first())
   )
     return json({ error: "Device session expired; reload" }, 401);
+  if (m === "GET" && p === "/api/display")
+    return json(await displaySchedule(env, id));
   const s = await schedule(env, id);
   if (m === "GET" && p === "/api/schedule") return json(s);
-  if (m === "GET" && p === "/api/display")
-    return json({
-      title: s.title,
-      semester: s.semester,
-      academic_year: s.academic_year,
-      classes: s.classes.map(
-        ({
-          subject_code,
-          subject_name,
-          section,
-          day,
-          start_time,
-          end_time,
-          room,
-        }) => ({
-          subject_code,
-          subject_name,
-          section,
-          day,
-          start_time,
-          end_time,
-          room,
-        }),
-      ),
-      tasks: s.tasks.map(
-        ({
-          title,
-          notes,
-          task_date,
-          start_time,
-          end_time,
-          category,
-          completed,
-        }) => ({
-          title,
-          notes,
-          task_date,
-          start_time,
-          end_time,
-          category,
-          completed,
-        }),
-      ),
-    });
   if (m === "PUT" && p === "/api/schedule") {
     let b;
     try {
@@ -533,14 +535,23 @@ export default {
     const u = new URL(req.url);
     try {
       const backupPath = u.pathname.toLowerCase().startsWith("/backup");
+      const maintenance = env.MAINTENANCE_MODE === "true";
+      const apiPath = u.pathname.startsWith("/api/");
       const response = backupPath
         ? new Response("Not found", {
             status: 404,
             headers: { "cache-control": "no-store" },
           })
-        : u.pathname.startsWith("/api/")
+        : apiPath
           ? await api(req, env)
-          : await env.ASSETS.fetch(req);
+          : maintenance &&
+              !["/fallback", "/fallback.html", "/fallback.js"].includes(
+                u.pathname,
+              )
+            ? await env.ASSETS.fetch(
+                new Request(new URL("/fallback.html", req.url), req),
+              )
+            : await env.ASSETS.fetch(req);
       return await secureResponse(response);
     } catch (e) {
       console.error(e);
