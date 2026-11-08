@@ -1,8 +1,9 @@
-const CACHE = "clsu-life-planner-shell-v7";
+const CACHE = "clsu-life-planner-shell-v8";
 const SHELL = [
   "/",
   "/index.html",
   "/fallback.html",
+  "/fallback.js",
   "/manifest.webmanifest",
   "/icon.svg",
   "/import-guide.gif",
