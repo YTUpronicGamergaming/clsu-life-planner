@@ -1,3 +1,4 @@
+import { parsePdfSchedule } from "./pdf-import.js";
 
     document.documentElement.dataset.theme =
       localStorage.getItem("clsu_theme") === "dark" ? "dark" : "light";
@@ -427,102 +428,6 @@
       for (const l of lines) l.items.sort((a, b) => a.x - b.x);
       return lines.sort((a, b) => b.y - a.y);
     }
-    function lineValue(line, min, max) {
-      return line.items
-        .filter((i) => i.x >= min && i.x < max)
-        .map((i) => i.s)
-        .join(" ")
-        .trim();
-    }
-    function clock24(s, role) {
-      const m = s.match(/^(\d{1,2}):(\d{2})$/);
-      if (!m) throw Error("Unrecognized time: " + s);
-      let h = +m[1],
-        mm = +m[2];
-      if (h === 12) return `12:${String(mm).padStart(2, "0")}`;
-      if (h >= 1 && h <= 6) h += 12;
-      return `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
-    }
-    function parseDay(s) {
-      const m = s.replace(/_/g, "").trim().toLowerCase();
-      return {
-        m: 0,
-        mon: 0,
-        t: 1,
-        tu: 1,
-        tue: 1,
-        w: 2,
-        wed: 2,
-        th: 3,
-        thu: 3,
-        f: 4,
-        fri: 4,
-        s: 5,
-        sat: 5,
-      }[m];
-    }
-    function parsePdfLines(lines) {
-      const records = [];
-      for (let i = 0; i < lines.length; i++) {
-        const l = lines[i],
-          subject = lineValue(l, 0, 300),
-          section = lineValue(l, 300, 410),
-          units = lineValue(l, 410, 460),
-          days = lineValue(l, 460, 520),
-          times = lineValue(l, 520, 670),
-          rooms = lineValue(l, 670, 1000);
-        if (!subject || !section || !days || !times) continue;
-        if (!/^\d+$/.test(units)) continue;
-        const descLine = lines
-          .slice(i + 1)
-          .find(
-            (n) =>
-              n.y < l.y &&
-              l.y - n.y < 20 &&
-              lineValue(n, 0, 300) &&
-              !lineValue(n, 300, 1000),
-          );
-        const name = descLine ? lineValue(descLine, 0, 300) : subject;
-        const dayParts = days.split("/").map((x) => x.trim()),
-          timeParts = times.split("/").map((x) => x.trim()),
-          roomParts = rooms.split("/").map((x) => x.trim());
-        if (dayParts.length !== timeParts.length)
-          throw Error(
-            `The day/time count does not match for ${subject}. Please check this PDF manually.`,
-          );
-        dayParts.forEach((d, j) => {
-          const day = parseDay(d);
-          if (day === undefined)
-            throw Error(`Unrecognized weekday "${d}" for ${subject}.`);
-          const tm = timeParts[j].match(/^(\d{1,2}:\d{2})-(\d{1,2}:\d{2})$/);
-          if (!tm)
-            throw Error(
-              `Unrecognized time range "${timeParts[j]}" for ${subject}.`,
-            );
-          const start_time = clock24(tm[1], "start"),
-            end_time = clock24(tm[2], "end");
-          if (start_time >= end_time)
-            throw Error(
-              `Invalid time range for ${subject}: ${timeParts[j]}.`,
-            );
-          records.push({
-            subject_code: subject,
-            subject_name: name,
-            section,
-            units: Number(units),
-            day,
-            start_time,
-            end_time,
-            room: roomParts[j] || roomParts[0] || "",
-          });
-        });
-      }
-      if (!records.length)
-        throw Error(
-          "No schedule rows were detected. Make sure this is the CAIS Class Schedule registration-form PDF, not a screenshot or scanned document.",
-        );
-      return records;
-    }
     async function readCaisPdf(file) {
       if (
         file.type !== "application/pdf" &&
@@ -537,24 +442,34 @@
         "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
       const bytes = await file.arrayBuffer(),
         pdf = await pdfjs.getDocument({ data: bytes }).promise;
-      let allLines = [],
-        fullText = "";
+      const pages = [];
+      let fullText = "";
       for (let n = 1; n <= pdf.numPages; n++) {
         const page = await pdf.getPage(n),
           content = await page.getTextContent();
         const lines = groupTextItems(content.items);
-        allLines.push(...lines);
+        pages.push(lines);
         fullText +=
           " " + lines.map((l) => l.items.map((i) => i.s).join(" ")).join(" ");
       }
       const semester =
         (fullText.match(/(\d+(?:ST|ND|RD|TH)\s+SEMESTER)/i) || [])[1] || "",
         year =
-          (fullText.match(/A\.?Y\.?\s*(\d{4}\s*[-–]\s*\d{4})/i) || [])[1] ||
+          (
+            fullText.match(
+              /(?:A\.?\s*Y\.?|S\.?\s*Y\.?)\s*(\d{4}\s*[-–]\s*\d{4})/i,
+            ) || []
+          )[1] ||
           "";
-      const page2 = await pdf.getPage(pdf.numPages),
-        content = await page2.getTextContent(),
-        records = parsePdfLines(groupTextItems(content.items));
+      const section =
+        (fullText.match(
+          /(?:YR\/SECTION|SECTION)\s*:\s*([A-Z0-9][A-Z0-9_-]*)/i,
+        ) || [])[1] || "";
+      const records = parsePdfSchedule(pages, section);
+      if (!records.length)
+        throw Error(
+          "No schedule rows were detected. Choose a text-based CAIS Class Schedule or official registration form PDF.",
+        );
       return { records, semester, year, pages: pdf.numPages };
     }
     function showReview(result, file) {
@@ -737,7 +652,7 @@
       if (!file) return;
       try {
         showLoading(
-          "Reading your CAIS PDF",
+          "Reading your schedule PDF",
           "Extracting subjects, meeting days, times and rooms locally in your browser.",
         );
         const result = await readCaisPdf(file);

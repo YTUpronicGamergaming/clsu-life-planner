@@ -8,7 +8,7 @@ The public app acknowledges the CLSU CAIS experience as a reference for its acad
 
 ## CAIS import workflow
 1. The student clicks **Open CAIS**. The official CAIS dashboard opens in a separate tab.
-2. The student signs in directly on CAIS and downloads the Class Schedule registration-form PDF.
+2. The student signs in directly on CAIS and downloads the official registration form or Class Schedule PDF.
 3. The student returns to CLSU Schedule and selects the PDF.
 4. PDF.js extracts the schedule-details table locally in the browser. The PDF itself is not uploaded to the Worker.
 5. The student reviews the detected classes and confirms import. Only the extracted class records are sent to the Worker and saved in D1.
@@ -20,7 +20,7 @@ The welcome screen stays visible after a schedule is created and includes a loop
 - Use `npm run version:patch` for compatible fixes, `npm run version:minor` for new features, and `npm run version:major` for breaking changes.
 - Keep the project pre-1.0 until its public behavior is stable. For each release, choose the bump by the most significant user-facing change and include the updated package files in the release commit.
 
-The PDF parser currently targets the text-based, two-page CAIS Class Schedule PDF format inspected during development. It is not OCR; scanned/image-only PDFs are not supported. Review extracted entries before confirming. The uploaded sample was parsed locally into 14 class meetings across 10 subjects. The importer handles multiple meetings per subject and room labels such as `Async_` as schedule entries with the times printed in the details table.
+The PDF parser recognizes the text-based Class Schedule details table and the official registration form's differently arranged schedule table, including its section field. It is not OCR; scanned/image-only PDFs are not supported. Review extracted entries before confirming because the two CAIS documents can list different enrolled classes. The importer handles multiple meetings per subject and split room labels such as `Async_`.
 
 PDF.js 4.10.38 is loaded from cdnjs when the user selects a PDF. This requires an internet connection during PDF import. No PDF bytes are sent to the application backend.
 
