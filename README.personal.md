@@ -13,7 +13,7 @@ The public app acknowledges the CLSU CAIS experience as a reference for its acad
 4. PDF.js extracts the schedule-details table locally in the browser. The PDF itself is not uploaded to the Worker.
 5. The student reviews the detected classes and confirms import. Only the extracted class records are sent to the Worker and saved in D1.
 
-The welcome screen stays visible after a schedule is created and includes a looping import walkthrough before the CAIS link. The custom square `public/new-import-guide.gif` is the primary guide; the existing `public/import-guide.gif` is the fallback. Optional theme-specific guides can be added as `public/import-guide_light.gif` and `public/import-guide_dark.gif`; the guide follows the selected theme when a matching file exists and otherwise uses the custom guide. Its square frame preserves Canva's 1:1 design ratio without cropping or distortion. Students can choose PDF import or open the manual-entry dialog at any time.
+The welcome screen stays visible after a schedule is created and includes a looping import walkthrough before the CAIS link. Public icons and guide images live in `public/assets/`; the `GUIDE_ASSETS` map in `public/app.js` selects separate light and dark animations. Keep optimized, web-ready files in `public/assets/`. Large Canva originals belong in `.private-media/` outside the deployed assets directory; the current 1264px originals exceed 500 MB each and are not shipped. The two 512px web-optimized GIFs are generated from those originals and precached for offline use.
 
 ## Semantic versioning
 - `package.json` is the canonical project version; npm keeps `package-lock.json` in sync.

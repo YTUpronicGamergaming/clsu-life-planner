@@ -17,6 +17,10 @@ function addCell(row, value) {
 function render(schedule) {
   const classes = Array.isArray(schedule.classes) ? schedule.classes : [];
   const tasks = Array.isArray(schedule.tasks) ? schedule.tasks : [];
+  const hasSchedule = classes.length > 0 || tasks.length > 0;
+  get("#emptyIntro").hidden = hasSchedule;
+  get("#classSection").hidden = classes.length === 0;
+  get("#tasksSection").hidden = tasks.length === 0;
   get("#scheduleTitle").textContent = schedule.title || "CLSU Life Planner";
   get("#semester").textContent =
     [schedule.semester, schedule.academic_year].filter(Boolean).join(" · ") ||
@@ -93,6 +97,10 @@ async function checkMaintenance() {
     const maintenance = mode.maintenance === true;
     get("#maintenanceNotice").hidden = !maintenance;
     get("#mainPlannerLink").hidden = maintenance;
+    get("#maintenanceFootnote").hidden = !maintenance;
+    get("#emptyIntroStatus").textContent = maintenance
+      ? "Maintenance is in progress. This read-only page stays available, but there is no saved schedule on this device to display. Please come back later."
+      : "There is no schedule available on this device to display right now.";
     if (
       !maintenance &&
       ["/fallback", "/fallback.html"].includes(location.pathname)
@@ -140,6 +148,11 @@ async function loadSchedule() {
       status.textContent =
         "Offline · showing the last schedule cached in this browser";
     } catch {
+      get("#emptyIntro").hidden = false;
+      get("#classSection").hidden = true;
+      get("#tasksSection").hidden = true;
+      get("#emptyIntroStatus").textContent =
+        "A saved schedule could not be loaded on this device. The display is read-only; please check your connection and come back later.";
       status.textContent =
         error.name === "TimeoutError"
           ? "Schedule request timed out. Check your connection and try Refresh."

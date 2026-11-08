@@ -57,10 +57,11 @@ function cookie(req, name) {
   return null;
 }
 async function guideAsset(req, env) {
-  const response = await env.ASSETS.fetch(req);
-  if (response.status !== 404) return response;
+  const theme = new URL(req.url).pathname.endsWith("_dark.gif")
+    ? "dark"
+    : "light";
   return env.ASSETS.fetch(
-    new Request(new URL("/new-import-guide.gif", req.url), req),
+    new Request(new URL(`/assets/guide-${theme}.gif`, req.url), req),
   );
 }
 async function hash(s) {
@@ -541,7 +542,7 @@ export default {
           ? new Response(null, {
               status: 302,
               headers: {
-                location: new URL("/icon.svg", req.url).toString(),
+                location: new URL("/assets/icon.svg", req.url).toString(),
                 "cache-control": "public, max-age=86400",
               },
             })

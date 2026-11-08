@@ -17,6 +17,11 @@
       );
     const clockNow = () => new Date(Date.now() + serverTimeOffset);
     const $ = (s) => document.querySelector(s);
+    const GUIDE_ASSETS = Object.freeze({
+      light: "/assets/guide-light.gif",
+      dark: "/assets/guide-dark.gif",
+      fallback: "/assets/import-guide.gif",
+    });
     $("#printSchedule").addEventListener("click", () => window.print());
     const displayMode =
       new URLSearchParams(location.search).get("view") === "display";
@@ -1102,32 +1107,19 @@
     const themeToggle = $("#themeToggle");
     const guideImage = $("#guideGif");
     guideImage.addEventListener("error", () => {
-      if (guideImage.src.endsWith("/import-guide.gif")) return;
+      if (guideImage.src.endsWith(GUIDE_ASSETS.fallback)) return;
       guideImage.dataset.usingFallback = "true";
-      guideImage.src = "/import-guide.gif";
+      guideImage.src = GUIDE_ASSETS.fallback;
     });
     let guideRequest = 0;
     async function updateGuideTheme(theme) {
       const request = ++guideRequest,
-        variant = `/import-guide_${theme}.gif`;
+        source = GUIDE_ASSETS[theme] || GUIDE_ASSETS.light;
       $("#guideThemeLabel").textContent = `${theme.toUpperCase()} GUIDE`;
-      try {
-        const response = await fetch(variant, { method: "HEAD" });
-        if (request !== guideRequest) return;
-        const type = response.headers.get("content-type") || "";
-        guideImage.dataset.usingFallback = String(
-          !response.ok || !type.startsWith("image/"),
-        );
-        guideImage.src =
-          guideImage.dataset.usingFallback === "true"
-            ? "/new-import-guide.gif"
-            : variant;
-      } catch {
-        if (request === guideRequest) {
-          guideImage.dataset.usingFallback = "true";
-          guideImage.src = "/new-import-guide.gif";
-        }
-      }
+      if (request !== guideRequest) return;
+      guideImage.dataset.usingFallback = "false";
+      guideImage.dataset.theme = theme;
+      guideImage.src = source;
     }
     function setTheme(theme) {
       document.documentElement.dataset.theme = theme;

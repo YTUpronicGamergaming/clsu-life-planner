@@ -143,6 +143,36 @@
         padding: 8px 0 0;
       }
 
+      .intro {
+        border-color: #e8d29b;
+        background: #fffdf6;
+      }
+
+      .intro h2 {
+        color: #385344;
+      }
+
+      .feature-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 12px;
+        margin: 18px 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .feature-list li {
+        border: 1px solid #e8ece6;
+        border-radius: 12px;
+        padding: 14px;
+      }
+
+      .feature-list strong {
+        display: block;
+        margin-bottom: 5px;
+        color: #385344;
+      }
+
       .task-list {
         display: grid;
         gap: 10px;
@@ -209,7 +239,32 @@
     </header>
 
     <main>
-      <section aria-labelledby="classesHeading">
+      <section class="intro" id="emptyIntro" aria-labelledby="emptyHeading" hidden>
+        <h2 id="emptyHeading">Your schedule display is ready</h2>
+        <p id="emptyIntroStatus">
+          There is no schedule available on this device to show right now.
+        </p>
+        <p>
+          CLSU Life Planner brings your weekly class timetable and personal plans
+          together in one place. This page is a read-only display for checking
+          class days and times, rooms, and upcoming study sessions or reminders.
+        </p>
+        <ul class="feature-list">
+          <li><strong>Class timetable</strong>See class days, times, subjects, and rooms at a glance.</li>
+          <li><strong>Personal plans</strong>Keep study sessions, assignments, and reminders alongside your week.</li>
+          <li><strong>Live display</strong>Use a simple schedule view without planner editing controls.</li>
+        </ul>
+        <p class="muted">
+          This schedule view is read-only. When the planner is available, open
+          it on the device where you want to manage or display your schedule.
+        </p>
+        <p class="muted" id="maintenanceFootnote" hidden>
+          The planner is currently in maintenance mode and this page is
+          read-only. Please come back later to use the full planner.
+        </p>
+      </section>
+
+      <section id="classSection" aria-labelledby="classesHeading" hidden>
         <h2 id="classesHeading">Class schedule</h2>
         <div class="table-wrap">
           <table>
@@ -227,7 +282,7 @@
         <p class="empty" id="noClasses" hidden>No class meetings saved.</p>
       </section>
 
-      <section aria-labelledby="tasksHeading">
+      <section id="tasksSection" aria-labelledby="tasksHeading" hidden>
         <h2 id="tasksHeading">Personal plans</h2>
         <ul class="task-list" id="tasks"></ul>
         <p class="empty" id="noTasks" hidden>No personal plans saved.</p>

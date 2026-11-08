@@ -1,4 +1,4 @@
-const CACHE = "clsu-life-planner-shell-v10";
+const CACHE = "clsu-life-planner-shell-v12";
 const SHELL = [
   "/",
   "/index.html",
@@ -6,9 +6,10 @@ const SHELL = [
   "/fallback.html",
   "/fallback.js",
   "/manifest.webmanifest",
-  "/icon.svg",
-  "/import-guide.gif",
-  "/new-import-guide.gif",
+  "/assets/icon.svg",
+  "/assets/import-guide.gif",
+  "/assets/guide-light.gif",
+  "/assets/guide-dark.gif",
 ];
 self.addEventListener("install", (event) => {
   event.waitUntil(
