@@ -1,7 +1,8 @@
-const CACHE = "clsu-life-planner-shell-v6";
+const CACHE = "clsu-life-planner-shell-v7";
 const SHELL = [
   "/",
   "/index.html",
+  "/fallback.html",
   "/manifest.webmanifest",
   "/icon.svg",
   "/import-guide.gif",
@@ -41,13 +42,13 @@ self.addEventListener("fetch", (event) => {
       fetch(request)
         .then((response) => {
           const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put("/", copy));
+          caches.open(CACHE).then((cache) => cache.put(request, copy));
           return response;
         })
-        .catch(() =>
-          caches
-            .match("/index.html")
-            .then((response) => response || caches.match("/")),
+        .catch(async () =>
+          (await caches.match(request)) ||
+          (await caches.match("/index.html")) ||
+          caches.match("/"),
         ),
     );
     return;

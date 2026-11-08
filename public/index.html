@@ -3039,7 +3039,12 @@
         "room",
         "units",
       ],
-        q = (v) => '"' + String(v ?? "").replace(/"/g, '""') + '"';
+        q = (v) => {
+          let text = String(v ?? "");
+          if (/^[\u0000-\u0020\u007f-\u009f]*[=+\-@]/.test(text))
+            text = "'" + text;
+          return '"' + text.replace(/"/g, '""') + '"';
+        };
       download(
         "clsu-schedule.csv",
         [
@@ -3077,7 +3082,15 @@
       let h = parse(lines[0]);
       return lines.slice(1).map((l) => {
         let vals = parse(l);
-        return Object.fromEntries(h.map((k, i) => [k, vals[i] || ""]));
+        return Object.fromEntries(
+          h.map((k, i) => [
+            k,
+            (vals[i] || "").replace(
+              /^'(?=[\u0000-\u0020\u007f-\u009f]*[=+\-@])/,
+              "",
+            ),
+          ]),
+        );
       });
     }
     $("#file").onchange = async (e) => {

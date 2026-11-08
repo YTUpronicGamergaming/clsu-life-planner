@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="theme-color" content="#385344" />
+    <title>Read-only schedule | CLSU Life Planner</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+          sans-serif;
+        color: #23332a;
+        background: #f6f5f0;
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        max-width: 1050px;
+        margin: 0 auto;
+        padding: 28px 18px 56px;
+      }
+
+      header,
+      section {
+        border: 1px solid #dfe5dc;
+        border-radius: 16px;
+        background: #fff;
+        box-shadow: 0 8px 24px #263b2b0b;
+      }
+
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 20px;
+        padding: 20px;
+      }
+
+      h1,
+      h2,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        margin-bottom: 5px;
+        color: #385344;
+        font-size: clamp(1.35rem, 3vw, 2rem);
+      }
+
+      h2 {
+        margin-bottom: 14px;
+        font-size: 1.1rem;
+      }
+
+      .muted,
+      #status {
+        color: #627067;
+        font-size: 0.92rem;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+      }
+
+      button,
+      .link-button {
+        min-height: 42px;
+        border: 1px solid #385344;
+        border-radius: 10px;
+        padding: 9px 14px;
+        color: #fff;
+        background: #385344;
+        font: inherit;
+        font-weight: 650;
+        text-decoration: none;
+        cursor: pointer;
+      }
+
+      button.secondary,
+      .link-button.secondary {
+        color: #385344;
+        background: #fff;
+      }
+
+      section {
+        margin-bottom: 18px;
+        padding: 20px;
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid #e8ece6;
+        padding: 11px 9px;
+        vertical-align: top;
+      }
+
+      th {
+        color: #526357;
+        font-size: 0.82rem;
+      }
+
+      td {
+        font-size: 0.94rem;
+      }
+
+      .empty {
+        color: #627067;
+        padding: 8px 0 0;
+      }
+
+      .task-list {
+        display: grid;
+        gap: 10px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .task {
+        display: flex;
+        justify-content: space-between;
+        gap: 14px;
+        border-bottom: 1px solid #e8ece6;
+        padding: 10px 0;
+      }
+
+      .task:last-child {
+        border-bottom: 0;
+      }
+
+      .task-title {
+        font-weight: 650;
+        overflow-wrap: anywhere;
+      }
+
+      .task-meta {
+        flex: 0 0 auto;
+        color: #627067;
+        text-align: right;
+        font-size: 0.9rem;
+      }
+
+      @media (max-width: 560px) {
+        body {
+          padding: 16px 12px 36px;
+        }
+
+        header,
+        section {
+          padding: 16px;
+        }
+
+        th,
+        td {
+          padding: 9px 7px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1 id="scheduleTitle">CLSU Life Planner</h1>
+        <p class="muted" id="semester">Read-only schedule view</p>
+        <p id="status" role="status" aria-live="polite">Loading schedule…</p>
+      </div>
+      <div class="actions">
+        <button id="refresh" type="button">Refresh</button>
+        <a class="link-button secondary" href="/">Open planner</a>
+      </div>
+    </header>
+
+    <main>
+      <section aria-labelledby="classesHeading">
+        <h2 id="classesHeading">Class schedule</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Day</th>
+                <th scope="col">Time</th>
+                <th scope="col">Subject</th>
+                <th scope="col">Room</th>
+              </tr>
+            </thead>
+            <tbody id="classes"></tbody>
+          </table>
+        </div>
+        <p class="empty" id="noClasses" hidden>No class meetings saved.</p>
+      </section>
+
+      <section aria-labelledby="tasksHeading">
+        <h2 id="tasksHeading">Personal plans</h2>
+        <ul class="task-list" id="tasks"></ul>
+        <p class="empty" id="noTasks" hidden>No personal plans saved.</p>
+      </section>
+    </main>
+
+    <script type="module">
+      const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+      const get = (selector) => document.querySelector(selector);
+      const formatTime = (value) => {
+        if (!value) return "All day";
+        const [hour, minute] = value.split(":").map(Number);
+        const suffix = hour < 12 ? "AM" : "PM";
+        return `${hour % 12 || 12}:${String(minute).padStart(2, "0")} ${suffix}`;
+      };
+      const localTime = (value) =>
+        value ? formatTime(value) : "";
+
+      function addCell(row, value) {
+        const cell = document.createElement("td");
+        cell.textContent = value == null ? "" : String(value);
+        row.append(cell);
+      }
+
+      function render(schedule) {
+        const classes = Array.isArray(schedule.classes) ? schedule.classes : [];
+        const tasks = Array.isArray(schedule.tasks) ? schedule.tasks : [];
+        get("#scheduleTitle").textContent =
+          schedule.title || "CLSU Life Planner";
+        get("#semester").textContent = [schedule.semester, schedule.academic_year]
+          .filter(Boolean)
+          .join(" · ") || "Read-only schedule view";
+
+        const classBody = get("#classes");
+        classBody.replaceChildren();
+        classes
+          .slice()
+          .sort((a, b) => Number(a.day) - Number(b.day) ||
+            String(a.start_time).localeCompare(String(b.start_time)))
+          .forEach((item) => {
+            const row = document.createElement("tr");
+            addCell(row, days[Number(item.day)] || "—");
+            addCell(
+              row,
+              `${localTime(item.start_time)}${item.end_time ? `–${localTime(item.end_time)}` : ""}`,
+            );
+            addCell(
+              row,
+              [item.subject_code, item.subject_name, item.section]
+                .filter(Boolean)
+                .join(" · "),
+            );
+            addCell(row, item.room);
+            classBody.append(row);
+          });
+        get("#noClasses").hidden = classes.length > 0;
+
+        const taskList = get("#tasks");
+        taskList.replaceChildren();
+        tasks
+          .slice()
+          .sort((a, b) =>
+            String(a.task_date).localeCompare(String(b.task_date)) ||
+            String(a.start_time || "").localeCompare(String(b.start_time || "")),
+          )
+          .forEach((task) => {
+            const item = document.createElement("li");
+            item.className = "task";
+            const title = document.createElement("span");
+            title.className = "task-title";
+            title.textContent = task.title || "Untitled plan";
+            const meta = document.createElement("span");
+            meta.className = "task-meta";
+            const date = task.task_date
+              ? new Intl.DateTimeFormat("en-PH", {
+                  dateStyle: "medium",
+                  timeZone: "Asia/Manila",
+                }).format(new Date(`${task.task_date}T12:00:00+08:00`))
+              : "";
+            const time = task.start_time
+              ? `${formatTime(task.start_time)}${task.end_time ? `–${formatTime(task.end_time)}` : ""}`
+              : "All day";
+            meta.textContent = `${date}${date ? " · " : ""}${time}${task.completed ? " · Done" : ""}`;
+            item.append(title, meta);
+            taskList.append(item);
+          });
+        get("#noTasks").hidden = tasks.length > 0;
+      }
+
+      async function loadSchedule() {
+        const status = get("#status");
+        status.textContent = "Loading schedule…";
+        try {
+          const response = await fetch("/api/session", {
+            credentials: "same-origin",
+            cache: "no-store",
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || "Could not load schedule");
+          let previousSchedule = null;
+          try {
+            const recoveryKey = "clsu_schedule_recovery_cache";
+            if (result.deviceReset) {
+              const previous = localStorage.getItem("clsu_schedule_cache");
+              if (previous && !localStorage.getItem(recoveryKey)) {
+                localStorage.setItem(recoveryKey, previous);
+                previousSchedule = JSON.parse(previous);
+              }
+            } else {
+              localStorage.setItem(
+                "clsu_schedule_cache",
+                JSON.stringify(result.schedule || {}),
+              );
+            }
+          } catch {}
+          if (!previousSchedule && result.deviceReset) {
+            try {
+              previousSchedule = JSON.parse(
+                localStorage.getItem("clsu_schedule_recovery_cache") || "null",
+              );
+            } catch {}
+          }
+          if (previousSchedule && Array.isArray(previousSchedule.classes)) {
+            render(previousSchedule);
+            status.textContent =
+              "Security reset · showing this browser's cached schedule; restore it from the main planner when ready";
+          } else {
+            render(result.schedule || {});
+            status.textContent = result.deviceReset
+              ? "New private device session · no previous browser copy found"
+              : `Read-only · updated ${new Date().toLocaleTimeString("en-PH", { timeZone: "Asia/Manila" })}`;
+          }
+        } catch {
+          try {
+            const cached = JSON.parse(
+              localStorage.getItem("clsu_schedule_cache") || "null",
+            );
+            if (!cached || !Array.isArray(cached.classes))
+              throw new Error("No cached schedule");
+            render(cached);
+            status.textContent = "Offline · showing the last schedule cached in this browser";
+          } catch {
+            status.textContent =
+              "Schedule unavailable. Reconnect and try Refresh.";
+          }
+        }
+      }
+
+      get("#refresh").addEventListener("click", loadSchedule);
+      await loadSchedule();
+    </script>
+  </body>
+</html>

@@ -532,9 +532,15 @@ export default {
   async fetch(req, env) {
     const u = new URL(req.url);
     try {
-      const response = u.pathname.startsWith("/api/")
-        ? await api(req, env)
-        : await env.ASSETS.fetch(req);
+      const backupPath = u.pathname.toLowerCase().startsWith("/backup");
+      const response = backupPath
+        ? new Response("Not found", {
+            status: 404,
+            headers: { "cache-control": "no-store" },
+          })
+        : u.pathname.startsWith("/api/")
+          ? await api(req, env)
+          : await env.ASSETS.fetch(req);
       return await secureResponse(response);
     } catch (e) {
       console.error(e);
