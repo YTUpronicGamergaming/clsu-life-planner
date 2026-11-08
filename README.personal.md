@@ -2,6 +2,10 @@
 
 Private-by-device student planner combining a fixed class timetable, dated personal tasks, and a CAIS registration-form PDF importer (Plan A).
 
+## Design acknowledgment
+
+The public app acknowledges the CLSU CAIS experience as a reference for its academic timetable concept and schedule workflow. The project is independently designed and developed, with no claimed CLSU/CAIS affiliation or endorsement. Attribution does not grant permission to reuse CAIS names, marks, screenshots, assets, or distinctive protected expression; use original UI assets and seek permission where needed.
+
 ## CAIS import workflow
 1. The student clicks **Open CAIS**. The official CAIS dashboard opens in a separate tab.
 2. The student signs in directly on CAIS and downloads the Class Schedule registration-form PDF.
@@ -9,7 +13,12 @@ Private-by-device student planner combining a fixed class timetable, dated perso
 4. PDF.js extracts the schedule-details table locally in the browser. The PDF itself is not uploaded to the Worker.
 5. The student reviews the detected classes and confirms import. Only the extracted class records are sent to the Worker and saved in D1.
 
-The welcome screen stays visible after a schedule is created and includes a looping import walkthrough before the CAIS link. The existing `public/import-guide.gif` is used as the fallback. Optional theme-specific guides can be added as `public/import-guide_light.gif` and `public/import-guide_dark.gif`; the guide follows the selected theme when a matching file exists and otherwise uses the fallback. The guide frame keeps the current 760:390 display ratio and scales larger or differently sized source GIFs to fit without distortion. Students can choose PDF import or open the manual-entry dialog at any time.
+The welcome screen stays visible after a schedule is created and includes a looping import walkthrough before the CAIS link. The custom square `public/new-import-guide.gif` is the primary guide; the existing `public/import-guide.gif` is the fallback. Optional theme-specific guides can be added as `public/import-guide_light.gif` and `public/import-guide_dark.gif`; the guide follows the selected theme when a matching file exists and otherwise uses the custom guide. Its square frame preserves Canva's 1:1 design ratio without cropping or distortion. Students can choose PDF import or open the manual-entry dialog at any time.
+
+## Semantic versioning
+- `package.json` is the canonical project version; npm keeps `package-lock.json` in sync.
+- Use `npm run version:patch` for compatible fixes, `npm run version:minor` for new features, and `npm run version:major` for breaking changes.
+- Keep the project pre-1.0 until its public behavior is stable. For each release, choose the bump by the most significant user-facing change and include the updated package files in the release commit.
 
 The PDF parser currently targets the text-based, two-page CAIS Class Schedule PDF format inspected during development. It is not OCR; scanned/image-only PDFs are not supported. Review extracted entries before confirming. The uploaded sample was parsed locally into 14 class meetings across 10 subjects. The importer handles multiple meetings per subject and room labels such as `Async_` as schedule entries with the times printed in the details table.
 
@@ -42,15 +51,19 @@ PDF.js 4.10.38 is loaded from cdnjs when the user selects a PDF. This requires a
 - No student account and no CAIS credentials are requested.
 - The user authenticates directly on the official CAIS website in a separate tab.
 - Do not collect or store CAIS passwords, session cookies, or CSRF tokens.
-- Worker generates a random 256-bit device token in an HttpOnly, Secure, SameSite=Lax cookie. D1 stores only SHA-256(token).
+- Worker generates a random 256-bit device token in an HttpOnly, Secure, SameSite=Lax `__Host-clsu_device` cookie. The `__Host-` prefix requires a host-only cookie with `Path=/` and prevents sibling subdomains from setting a competing cookie. D1 stores only SHA-256(token). The legacy `clsu_device` cookie is never used for authentication and is expired when seen. After a security reset, the UI offers to restore the prior schedule from this browser's local cache; server data keyed only by the old cookie cannot be migrated safely.
 - D1 stores extracted schedule records scoped to that device. This is not end-to-end encryption: the Worker processes the class details.
 - Clearing browser cookies/site data loses access. Export JSON/CSV backups. JSON includes planner tasks as well as classes.
 - The welcome screen visibility is not session-based. Schedule data is associated with a device cookie and cached in browser storage; the intro remains visible regardless of whether a schedule is already present.
+
+## Response security
+- The Worker adds HSTS, MIME-sniffing protection, same-origin frame restrictions, a strict referrer policy, and a restrictive permissions policy to app and API responses.
+- HTML responses receive a Content Security Policy. The inline application module is authorized by a response-specific SHA-256 hash; inline event handlers are disallowed. Styles remain inline-compatible for the current page design, and PDF.js is allowed from its pinned cdnjs URL.
 - There is no public sharing endpoint. `GET /api/display` returns only display fields (schedule title, class meeting details, and planner task details) and requires the same private device cookie as the planner. It sends `Cache-Control: no-store` and does not enable cross-origin access.
 - The display URL and API are suitable for a same-origin live web view. A separate DIY widget hosted on another origin is not recommended yet: browser cookie/CORS restrictions prevent safe anonymous access, while making the endpoint public would expose private class and task details. A dedicated cross-device widget would need an explicit sharing/authorization model first.
 
 ### Display API
-`GET /api/display` is read-only and requires the existing `clsu_device` cookie. It returns a minimal JSON object with `title`, `semester`, `academic_year`, `classes` (subject, section, weekday index, start/end time, and room), and `tasks` (title, notes, date, optional start/end time, category, and completion state). Responses are not cached and no CORS access is enabled. Open `/?view=display` for the ready-made live view; it refreshes this data every 30 seconds while visible.
+`GET /api/display` is read-only and requires the `__Host-clsu_device` cookie. It returns a minimal JSON object with `title`, `semester`, `academic_year`, `classes` (subject, section, weekday index, start/end time, and room), and `tasks` (title, notes, date, optional start/end time, category, and completion state). Responses are not cached and no CORS access is enabled. Open `/?view=display` for the ready-made live view; it refreshes this data every 30 seconds while visible.
 
 ## Future work: Plan B
 Automated CAIS login/PDF retrieval is intentionally not part of this application or deployment. Any future Plan B investigation must be conducted in a separate, isolated test project and only after CLSU provides explicit authorization and a supported integration method. Never use real student credentials or production session cookies in test code.

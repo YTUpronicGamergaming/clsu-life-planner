@@ -234,7 +234,9 @@
 
     .guide-frame {
       width: 100%;
-      aspect-ratio: 760/390;
+      max-width: 430px;
+      aspect-ratio: 1;
+      margin-inline: auto;
       overflow: hidden;
       border: 1px solid #e7e1f1;
       border-radius: 12px;
@@ -1529,7 +1531,9 @@
 
     .guide-frame {
       width: 100%;
-      aspect-ratio: 760/390;
+      max-width: 430px;
+      aspect-ratio: 1;
+      margin-inline: auto;
       overflow: hidden;
       border: 1px solid #e7e1f1;
       border-radius: 12px;
@@ -1754,7 +1758,7 @@
         title="Import a schedule file or export a backup">
         Import / backup</button><button class="btn secondary" id="themeToggle" type="button" aria-pressed="false"
         title="Switch between light and dark appearance">
-        Dark mode</button><button class="btn mint" onclick="window.print()"
+        Dark mode        </button><button class="btn mint" id="printSchedule" type="button"
         title="Print or save your timetable as a PDF">
         Print / PDF
       </button>
@@ -1789,6 +1793,12 @@
           CLSU Life Planner never asks for or receives your CAIS password,
           session cookie, or CSRF token. The PDF is processed in your browser;
           only the extracted class details are sent to your private schedule.
+          <p class="muted" style="margin: 8px 0 0">
+            <b>Design acknowledgment:</b> The academic timetable concept and
+            schedule workflow were informed by the CLSU CAIS experience. CLSU
+            Life Planner is an independent project, not affiliated with or
+            endorsed by CLSU or CAIS.
+          </p>
         </div>
       </div>
       <div class="tour" aria-label="Looping guide showing how to download and import a CAIS registration-form PDF">
@@ -1797,7 +1807,7 @@
             id="guideThemeLabel">LIGHT GUIDE</span>
         </div>
         <div class="guide-frame">
-          <img class="guide-gif" id="guideGif" src="/import-guide.gif"
+          <img class="guide-gif" id="guideGif" src="/new-import-guide.gif"
             alt="Animated guide: open CAIS, download the Class Schedule PDF, then return and upload it for schedule extraction" />
         </div>
         <p class="muted guide-caption">
@@ -2185,6 +2195,7 @@
       );
     const clockNow = () => new Date(Date.now() + serverTimeOffset);
     const $ = (s) => document.querySelector(s);
+    $("#printSchedule").addEventListener("click", () => window.print());
     const displayMode =
       new URLSearchParams(location.search).get("view") === "display";
     let timeFormat =
@@ -3109,9 +3120,58 @@
     };
     (async () => {
       try {
-        await api("/api/session");
+        const cachedBeforeSession = localStorage.getItem(
+          "clsu_schedule_cache",
+        );
+        const recoveryKey = "clsu_schedule_recovery_cache";
+        const session = await api("/api/session");
+        let recovery = localStorage.getItem(recoveryKey);
+        if (session.deviceReset && cachedBeforeSession && !recovery) {
+          recovery = cachedBeforeSession;
+          localStorage.setItem(recoveryKey, recovery);
+        }
+        let restored = false;
+        if (recovery) {
+          let previous;
+          try {
+            previous = JSON.parse(recovery);
+          } catch {
+            alert(
+              "The local recovery copy could not be read. It remains saved in this browser.",
+            );
+          }
+          if (
+            previous &&
+            Array.isArray(previous.classes) &&
+            (previous.tasks === undefined ||
+              Array.isArray(previous.tasks)) &&
+            confirm(
+              "For security, the previous device cookie was replaced. Restore the schedule cached on this browser to the new private device session?",
+            )
+          ) {
+            await api("/api/import", {
+              method: "POST",
+              body: JSON.stringify({
+                classes: previous.classes,
+                tasks: Array.isArray(previous.tasks) ? previous.tasks : [],
+                semester: previous.semester,
+                academic_year: previous.academic_year,
+                replace: true,
+                replace_tasks: true,
+              }),
+            });
+            localStorage.removeItem(recoveryKey);
+            restored = true;
+          }
+        }
         await refresh();
-        say("Private device schedule · synced");
+        say(
+          restored
+            ? "Local schedule restored · synced"
+            : session.deviceReset
+              ? "Security update reset this device session"
+              : "Private device schedule · synced",
+        );
       } catch (e) {
         const cached = localStorage.getItem("clsu_schedule_cache");
         if (cached) {
@@ -3207,7 +3267,7 @@
     const themeToggle = $("#themeToggle");
     const guideImage = $("#guideGif");
     guideImage.addEventListener("error", () => {
-      if (guideImage.dataset.usingFallback === "true") return;
+      if (guideImage.src.endsWith("/import-guide.gif")) return;
       guideImage.dataset.usingFallback = "true";
       guideImage.src = "/import-guide.gif";
     });
@@ -3225,12 +3285,12 @@
         );
         guideImage.src =
           guideImage.dataset.usingFallback === "true"
-            ? "/import-guide.gif"
+            ? "/new-import-guide.gif"
             : variant;
       } catch {
         if (request === guideRequest) {
           guideImage.dataset.usingFallback = "true";
-          guideImage.src = "/import-guide.gif";
+          guideImage.src = "/new-import-guide.gif";
         }
       }
     }

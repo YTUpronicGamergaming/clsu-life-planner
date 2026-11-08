@@ -4,6 +4,10 @@ A calm, practical place for CLSU students to see their class schedule and keep p
 
 > **Unofficial student project.** CLSU Life Planner is not an official CLSU service and is not affiliated with or endorsed by Central Luzon State University.
 
+## Design acknowledgment
+
+The academic timetable concept and schedule workflow were informed by the CLSU CAIS experience. CLSU Life Planner is independently designed and developed; this acknowledgment does not imply affiliation with or endorsement by CLSU or CAIS.
+
 ## What it does
 
 - **Live class timetable:** View today's schedule or the full seven-day week, with a Philippine-time clock, current-time marker, and summary of the class in progress or coming up next.
@@ -17,7 +21,7 @@ A calm, practical place for CLSU students to see their class schedule and keep p
 
 ## Privacy by design
 
-The planner does not ask for a student account or CLSU credentials. If you import a registration-form PDF, the PDF is processed in your browser; only the class details you confirm are sent to the service. Your schedule is associated with a private device cookie rather than a public share link.
+The planner does not ask for a student account or CLSU credentials. If you import a registration-form PDF, the PDF is processed in your browser; only the class details you confirm are sent to the service. Your schedule is saved in the service database and associated with a private, secure device cookie rather than a public share link. This keeps it available on that browser/device, but does not provide sign-in or cross-device syncing; keep an export backup in case you clear browser data. After a cookie security update, an existing browser may ask whether to restore its last locally cached schedule.
 
 The display API requires that same private device cookie. It is intended for a display on the same origin—not for a public, cross-origin widget. Do not share your device session or browser profile. This is not end-to-end encrypted storage, so keep a personal backup if you need one.
 

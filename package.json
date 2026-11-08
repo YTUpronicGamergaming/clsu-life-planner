@@ -1,20 +1,21 @@
-{   "name":"clsu-schedule",
-    "version":"0.1.0",
-    "private":true,
-    "type":"module",
-    "scripts":
-    {
-        "dev":"wrangler dev",
-        "deploy":"wrangler deploy",
-        "start": "wrangler dev",
-        "test":"vitest",
-        "cf-typegen": "wrangler types",
-        "db:local":"wrangler d1 migrations apply DB --local",
-        "db:remote":"wrangler d1 migrations apply DB --remote"
-    },
-    
-        "devDependencies":
-    {
-        "wrangler":"^4.0.0"
-    }
+{
+  "name": "clsu-schedule",
+  "version": "0.10.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "start": "wrangler dev",
+    "test": "vitest",
+    "cf-typegen": "wrangler types",
+    "db:local": "wrangler d1 migrations apply DB --local",
+    "db:remote": "wrangler d1 migrations apply DB --remote",
+    "version:patch": "npm version patch --no-git-tag-version",
+    "version:minor": "npm version minor --no-git-tag-version",
+    "version:major": "npm version major --no-git-tag-version"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
 }

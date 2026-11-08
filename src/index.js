@@ -1,4 +1,13 @@
-const COOKIE = "clsu_device";
+const COOKIE = "__Host-clsu_device";
+const LEGACY_COOKIE = "clsu_device";
+const SECURITY_HEADERS = {
+  "strict-transport-security": "max-age=31536000; includeSubDomains",
+  "x-content-type-options": "nosniff",
+  "x-frame-options": "SAMEORIGIN",
+  "referrer-policy": "strict-origin-when-cross-origin",
+  "permissions-policy":
+    "camera=(), microphone=(), geolocation=(), fullscreen=(self)",
+};
 const json = (data, status = 200, headers = {}) =>
   new Response(JSON.stringify(data), {
     status,
@@ -10,6 +19,55 @@ const json = (data, status = 200, headers = {}) =>
       ...headers,
     },
   });
+async function secureResponse(response) {
+  const headers = new Headers(response.headers);
+  for (const [name, value] of Object.entries(SECURITY_HEADERS))
+    headers.set(name, value);
+  if ((headers.get("content-type") || "").includes("text/html")) {
+    const html = await response.clone().text();
+    const inlineModule = html.match(
+      /<script\s+type=["']module["']\s*>([\s\S]*?)<\/script>/i,
+    );
+    const scriptHash = inlineModule
+      ? btoa(
+          String.fromCharCode(
+            ...new Uint8Array(
+              await crypto.subtle.digest(
+                "SHA-256",
+                new TextEncoder().encode(inlineModule[1]),
+              ),
+            ),
+          ),
+        )
+      : null;
+    const scriptSource = scriptHash
+      ? `'sha256-${scriptHash}'`
+      : "'self' https://cdnjs.cloudflare.com";
+    headers.set(
+      "content-security-policy",
+      [
+        "default-src 'self'",
+        "base-uri 'self'",
+        "object-src 'none'",
+        "frame-ancestors 'self'",
+        "form-action 'self'",
+        `script-src 'self' https://cdnjs.cloudflare.com ${scriptSource}`,
+        "script-src-attr 'none'",
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data:",
+        "font-src 'self' data:",
+        "connect-src 'self' https://cdnjs.cloudflare.com",
+        "worker-src 'self' blob: https://cdnjs.cloudflare.com",
+        "manifest-src 'self'",
+      ].join("; "),
+    );
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
 function cookie(req, name) {
   for (const p of (req.headers.get("Cookie") || "").split(";")) {
     const [k, ...v] = p.trim().split("=");
@@ -58,9 +116,11 @@ function validate(c) {
   return null;
 }
 async function deviceFor(req, env) {
-  let t = cookie(req, COOKIE);
-  if (t && /^[a-f0-9]{64}$/.test(t)) {
-    let id = await hash(t);
+  const primary = cookie(req, COOKIE),
+    legacy = cookie(req, LEGACY_COOKIE);
+  if (primary && /^[a-f0-9]{64}$/.test(primary)) {
+    const t = primary;
+    const id = await hash(t);
     let row = await env.DB.prepare(
       "SELECT id FROM anonymous_devices WHERE id=?",
     )
@@ -72,10 +132,15 @@ async function deviceFor(req, env) {
       )
         .bind(id)
         .run();
-      return { id, set: null };
+      return {
+        id,
+        set: null,
+        clearLegacy: Boolean(legacy),
+        deviceReset: false,
+      };
     }
   }
-  t = token();
+  const t = token();
   const id = await hash(t);
   await env.DB.prepare("INSERT INTO anonymous_devices(id) VALUES(?)")
     .bind(id)
@@ -83,6 +148,8 @@ async function deviceFor(req, env) {
   return {
     id,
     set: `${COOKIE}=${t}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=31536000`,
+    clearLegacy: Boolean(legacy),
+    deviceReset: Boolean(legacy),
   };
 }
 async function schedule(env, device) {
@@ -166,11 +233,17 @@ async function api(req, env) {
   if (m === "GET" && p === "/api/session") {
     const d = await deviceFor(req, env),
       s = await schedule(env, d.id);
-    return json(
-      { anonymous: true, schedule: s },
+    const response = json(
+      { anonymous: true, deviceReset: d.deviceReset, schedule: s },
       200,
       d.set ? { "set-cookie": d.set } : {},
     );
+    if (d.clearLegacy)
+      response.headers.append(
+        "set-cookie",
+        `${LEGACY_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`,
+      );
+    return response;
   }
   const t = cookie(req, COOKIE);
   if (!t || !/^[a-f0-9]{64}$/.test(t))
@@ -459,11 +532,13 @@ export default {
   async fetch(req, env) {
     const u = new URL(req.url);
     try {
-      if (u.pathname.startsWith("/api/")) return await api(req, env);
-      return env.ASSETS.fetch(req);
+      const response = u.pathname.startsWith("/api/")
+        ? await api(req, env)
+        : await env.ASSETS.fetch(req);
+      return await secureResponse(response);
     } catch (e) {
       console.error(e);
-      return json({ error: "Internal server error" }, 500);
+      return secureResponse(json({ error: "Internal server error" }, 500));
     }
   },
 };

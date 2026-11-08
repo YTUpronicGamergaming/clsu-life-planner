@@ -1,10 +1,11 @@
-const CACHE = "clsu-life-planner-shell-v5";
+const CACHE = "clsu-life-planner-shell-v6";
 const SHELL = [
   "/",
   "/index.html",
   "/manifest.webmanifest",
   "/icon.svg",
   "/import-guide.gif",
+  "/new-import-guide.gif",
 ];
 self.addEventListener("install", (event) => {
   event.waitUntil(
