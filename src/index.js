@@ -56,6 +56,13 @@ function cookie(req, name) {
   }
   return null;
 }
+async function guideAsset(req, env) {
+  const response = await env.ASSETS.fetch(req);
+  if (response.status !== 404) return response;
+  return env.ASSETS.fetch(
+    new Request(new URL("/new-import-guide.gif", req.url), req),
+  );
+}
 async function hash(s) {
   const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
   return [...new Uint8Array(b)]
@@ -519,6 +526,9 @@ export default {
       const maintenance = env.MAINTENANCE_MODE === "true";
       const apiPath = u.pathname.startsWith("/api/");
       const faviconPath = u.pathname === "/favicon.ico";
+      const guideVariantPath =
+        /^\/import-guide_(light|dark)\.gif$/i.test(u.pathname) &&
+        (req.method === "GET" || req.method === "HEAD");
       const fallbackPath = ["/fallback", "/fallback.html"].includes(
         u.pathname,
       );
@@ -535,6 +545,8 @@ export default {
                 "cache-control": "public, max-age=86400",
               },
             })
+        : guideVariantPath
+          ? await guideAsset(req, env)
         : !maintenance &&
             fallbackPath &&
             (req.method === "GET" || req.method === "HEAD")
