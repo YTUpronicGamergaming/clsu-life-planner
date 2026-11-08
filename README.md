@@ -2,6 +2,10 @@
 
 A calm, practical place for CLSU students to see their class schedule and keep personal plans in view. CLSU Life Planner brings recurring class meetings and dated tasks together in one private-by-device planner.
 
+> **[Open the live planner](https://clsu-life-planner.qualitylife.workers.dev/)** · [Project source](https://github.com/YTUpronicGamergaming/clsu-life-planner)
+>
+> No account required. Set up your timetable, keep personal plans beside it, and open a clean live display when you want your schedule at a glance.
+
 > **Unofficial student project.** CLSU Life Planner is not an official CLSU service and is not affiliated with or endorsed by Central Luzon State University.
 
 ## Design acknowledgment

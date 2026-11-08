@@ -518,6 +518,7 @@ export default {
       const backupPath = u.pathname.toLowerCase().startsWith("/backup");
       const maintenance = env.MAINTENANCE_MODE === "true";
       const apiPath = u.pathname.startsWith("/api/");
+      const faviconPath = u.pathname === "/favicon.ico";
       const fallbackPath = ["/fallback", "/fallback.html"].includes(
         u.pathname,
       );
@@ -526,6 +527,14 @@ export default {
             status: 404,
             headers: { "cache-control": "no-store" },
           })
+        : faviconPath && (req.method === "GET" || req.method === "HEAD")
+          ? new Response(null, {
+              status: 302,
+              headers: {
+                location: new URL("/icon.svg", req.url).toString(),
+                "cache-control": "public, max-age=86400",
+              },
+            })
         : !maintenance &&
             fallbackPath &&
             (req.method === "GET" || req.method === "HEAD")
