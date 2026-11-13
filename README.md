@@ -2,7 +2,7 @@
 
 A calm, practical place for CLSU students to see their class schedule and keep personal plans in view. CLSU Life Planner brings recurring class meetings and dated tasks together in one private-by-device planner.
 
-> **[Open the live planner](https://clsu-life-planner.qualitylife.workers.dev/)** · [Project source](https://github.com/YTUpronicGamergaming/clsu-life-planner)
+> **[Open the live planner](https://clsu-life-planner.qualitylife.workers.dev/)**
 >
 > No account required. Set up your timetable, keep personal plans beside it, and open a clean live display when you want your schedule at a glance.
 
@@ -15,12 +15,15 @@ The academic timetable concept and schedule workflow were informed by the CLSU C
 ## What it does
 
 - **Live class timetable:** View today's schedule or the full seven-day week, with a Philippine-time clock, current-time marker, and summary of the class in progress or coming up next.
+- **Complete class details:** See each course name, section, units, room, and optional instructor in a readable class agenda. The supplied CAIS PDFs list rooms but do not list professors; add an instructor manually when known.
+- **Easy corrections:** Edit any saved meeting to fill in a professor, correct a room, or update another class detail after importing.
+- **Mobile-friendly schedule:** Larger text and a full-detail class agenda make meetings easier to read on phones, while the weekly timetable remains horizontally scrollable.
 - **Personal planning:** Add dated study sessions, assignments, reminders, errands, and other activities. Mark them complete, edit them, or remove them; all-day plans are supported.
 - **Clear class and personal views:** Class meetings stay in the timetable, while dated personal plans appear in a separate agenda below it. Any time conflict is called out in the agenda, so events never cover each other and enrolled classes are never silently moved.
 - **Made for your day:** Jump to **Now**, choose a 12- or 24-hour clock, or expand the timetable to full screen.
 - **At-a-glance display:** Open the schedule-only display view in a live web view or a dedicated browser window. It refreshes while open, keeping the schedule visible without the rest of the planner interface.
 - **Installable and offline-friendly:** Install the planner on supported devices. The app shell and most recently saved schedule can be viewed offline; schedule edits require a connection.
-- **Flexible schedule setup:** Import a CLSU registration-form PDF after reviewing the detected classes, or add class meetings manually. Export or import JSON and CSV backups.
+- **Flexible schedule setup:** Import your CLSU registration-form and Class Schedule PDFs together to match registered classes with full course names, or add class meetings manually. Review the details before importing. Instructor names are imported when a PDF provides them, or can be added later. Export or import JSON and CSV backups.
 - **A focused, understated interface:** Warm neutral colors, deep green accents, responsive layouts, and a dark appearance option.
 
 ## Privacy by design

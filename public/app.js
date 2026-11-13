@@ -13,6 +13,7 @@ import { parsePdfSchedule } from "./pdf-import.js";
     const WEEK_DAYS = [...DAYS, "Sunday"];
     let data = { classes: [] },
       pendingImport = [],
+      editingClassId = null,
       serverTimeOffset = Number(
         localStorage.getItem("clsu_clock_offset") || 0,
       );
@@ -179,6 +180,10 @@ import { parsePdfSchedule } from "./pdf-import.js";
         viewMode === "today" ? "Personal plans for today" : "Personal plans this week";
       $("#calendarPlansDescription").textContent =
         "Shown separately from class meetings so overlapping times stay easy to read.";
+      $("#classAgendaHeading").textContent =
+        viewMode === "today" ? "Class details for today" : "Class details this week";
+      $("#classAgendaDescription").textContent =
+        "Full course names, rooms, sections, and units are shown here. Instructor names appear when provided by the PDF or entered manually.";
       $("#timeFormatToggle").textContent = `${timeFormat}-hour`;
       $("#timeFormatToggle").setAttribute(
         "aria-label",
@@ -230,8 +235,16 @@ import { parsePdfSchedule } from "./pdf-import.js";
               mins(now.hour + ":" + now.minute) >= mins(c.start_time) &&
               mins(now.hour + ":" + now.minute) < mins(c.end_time);
             if (current) el.classList.add("current-class");
-            el.innerHTML = `<b>${esc(c.subject_code)}</b><br>${fmtTime(c.start_time)}–${fmtTime(c.end_time)}<br>${esc(c.room || "Room TBA")}`;
-            el.title = c.subject_name;
+            el.innerHTML = `<b>${esc(c.subject_code)}</b><br>${fmtTime(c.start_time)}–${fmtTime(c.end_time)}<br><span class="meeting-room">${esc(c.room || "Room TBA")}</span>`;
+            el.title = [
+              c.subject_name,
+              c.section && `Section ${c.section}`,
+              c.units && `${c.units} units`,
+              c.room && `Room ${c.room}`,
+              c.instructor && `Instructor ${c.instructor}`,
+            ]
+              .filter(Boolean)
+              .join(" · ");
             col.append(el);
           });
         if (n === day) {
@@ -248,7 +261,7 @@ import { parsePdfSchedule } from "./pdf-import.js";
       $("#rows").innerHTML = data.classes
         .map(
           (c) =>
-            `<tr><td><b>${esc(c.subject_code)}</b><br>${esc(c.subject_name)}</td><td>${esc(c.section)}</td><td>${esc(c.units)}</td><td>${DAYS[+c.day]}</td><td>${fmtTime(c.start_time)}–${fmtTime(c.end_time)}</td><td>${esc(c.room)}</td><td class="noprint"><button class="btn danger" data-id="${esc(c.id)}">Delete</button></td></tr>`,
+            `<tr><td><b>${esc(c.subject_code)}</b><br>${esc(c.subject_name)}</td><td>${esc(c.section)}</td><td>${esc(c.units)}</td><td>${DAYS[+c.day]}</td><td>${fmtTime(c.start_time)}–${fmtTime(c.end_time)}</td><td>${esc(c.room)}</td><td>${esc(c.instructor || "Not listed")}</td><td class="noprint"><button class="btn secondary" data-class-edit="${esc(c.id)}">Edit</button> <button class="btn danger" data-id="${esc(c.id)}">Delete</button></td></tr>`,
         )
         .join("");
       $("#empty").hidden = data.classes.length > 0;
@@ -303,7 +316,7 @@ import { parsePdfSchedule } from "./pdf-import.js";
               : DAYS[following.day]
           : "No other classes scheduled";
         $("#nextMeta").textContent =
-          `Until ${fmtTime(active.end_time)} · ${active.room || "Room TBA"}${following ? " · NEXT: " + following.subject_code + " · " + when + " at " + fmtTime(following.start_time) : ""}`;
+          `Until ${fmtTime(active.end_time)} · ${active.room || "Room TBA"}${active.instructor ? " · " + active.instructor : ""}${following ? " · NEXT: " + following.subject_code + " · " + when + " at " + fmtTime(following.start_time) : ""}`;
       } else if (next) {
         const d = next.daysUntil * 1440 + mins(next.start_time) - hm,
           when =
@@ -316,7 +329,7 @@ import { parsePdfSchedule } from "./pdf-import.js";
         $("#nextTitle").textContent =
           next.subject_code + " · " + next.subject_name;
         $("#nextMeta").textContent =
-          `${when} · ${fmtTime(next.start_time)} · ${Math.floor(d / 60) ? Math.floor(d / 60) + "h " : ""}${d % 60}m away · ${next.room || "Room TBA"}`;
+          `${when} · ${fmtTime(next.start_time)} · ${Math.floor(d / 60) ? Math.floor(d / 60) + "h " : ""}${d % 60}m away · ${next.room || "Room TBA"}${next.instructor ? " · " + next.instructor : ""}`;
       } else {
         $("#nextKicker").textContent = "NO SCHEDULE";
         $("#nextTitle").textContent = "No classes have been added yet.";
@@ -326,8 +339,29 @@ import { parsePdfSchedule } from "./pdf-import.js";
       const todayDate = manilaDate(),
         firstDate = viewMode === "today" ? todayDate : weekDate(0),
         lastDate = viewMode === "today" ? todayDate : weekDate(6),
-        tasks = (data.tasks || [])
-          .filter((task) => task.task_date >= firstDate && task.task_date <= lastDate)
+        classMeetings = allClasses
+          .filter((c) => viewMode === "week" || +c.day === day)
+          .sort(
+            (a, b) =>
+              +a.day - +b.day || a.start_time.localeCompare(b.start_time),
+          );
+      $("#classAgenda").innerHTML = classMeetings.length
+        ? classMeetings
+            .map((c) => {
+              const details = [
+                c.section && `Section ${c.section}`,
+                `${c.units} unit${Number(c.units) === 1 ? "" : "s"}`,
+                `Room ${c.room || "TBA"}`,
+                `Instructor ${c.instructor || "not listed"}`,
+              ].filter(Boolean);
+              const dateLabel =
+                viewMode === "week" ? `${DAYS[+c.day]} · ` : "";
+              return `<div class="agenda-item class-agenda-item"><div class="agenda-time">${dateLabel}${fmtTime(c.start_time)}–${fmtTime(c.end_time)}</div><div><div class="agenda-subject">${esc(c.subject_code)} · ${esc(c.subject_name)}</div><div class="agenda-detail">${details.map(esc).join(" · ")}</div></div></div>`;
+            })
+            .join("")
+        : `<div class="empty">No classes scheduled for ${viewMode === "today" ? "today" : "this week"}.</div>`;
+      const tasks = (data.tasks || [])
+        .filter((task) => task.task_date >= firstDate && task.task_date <= lastDate)
           .sort(
             (a, b) =>
               a.task_date.localeCompare(b.task_date) ||
@@ -428,60 +462,111 @@ import { parsePdfSchedule } from "./pdf-import.js";
       for (const l of lines) l.items.sort((a, b) => a.x - b.x);
       return lines.sort((a, b) => b.y - a.y);
     }
-    async function readCaisPdf(file) {
+    async function readCaisPdfs(files) {
+      if (!files.length) throw Error("Choose at least one PDF file.");
+      if (files.length > 2) throw Error("Choose no more than two PDF files.");
       if (
-        file.type !== "application/pdf" &&
-        !file.name.toLowerCase().endsWith(".pdf")
+        files.some(
+          (file) =>
+            file.type !== "application/pdf" &&
+            !file.name.toLowerCase().endsWith(".pdf"),
+        )
       )
-        throw Error("Choose a PDF file.");
-      if (file.size > 15 * 1024 * 1024)
-        throw Error("PDF is too large. Maximum size is 15 MB.");
+        throw Error("Choose PDF files only.");
+      if (files.reduce((size, file) => size + file.size, 0) > 15 * 1024 * 1024)
+        throw Error("Combined PDF size is too large. Maximum size is 15 MB.");
       const pdfjs =
         await import("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs");
       pdfjs.GlobalWorkerOptions.workerSrc =
         "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
-      const bytes = await file.arrayBuffer(),
-        pdf = await pdfjs.getDocument({ data: bytes }).promise;
-      const pages = [];
-      let fullText = "";
-      for (let n = 1; n <= pdf.numPages; n++) {
-        const page = await pdf.getPage(n),
-          content = await page.getTextContent();
-        const lines = groupTextItems(content.items);
-        pages.push(lines);
-        fullText +=
-          " " + lines.map((l) => l.items.map((i) => i.s).join(" ")).join(" ");
-      }
-      const semester =
-        (fullText.match(/(\d+(?:ST|ND|RD|TH)\s+SEMESTER)/i) || [])[1] || "",
-        year =
+      const documents = [];
+      for (const file of files) {
+        const pdf = await pdfjs.getDocument({
+          data: await file.arrayBuffer(),
+        }).promise;
+        const pages = [];
+        let fullText = "";
+        for (let n = 1; n <= pdf.numPages; n++) {
+          const page = await pdf.getPage(n);
+          const lines = groupTextItems((await page.getTextContent()).items);
+          pages.push(lines);
+          fullText +=
+            " " + lines.map((l) => l.items.map((i) => i.s).join(" ")).join(" ");
+        }
+        const semester =
+          (fullText.match(/(\d+(?:ST|ND|RD|TH)\s+SEMESTER)/i) || [])[1] || "";
+        const year =
           (
             fullText.match(
               /(?:A\.?\s*Y\.?|S\.?\s*Y\.?)\s*(\d{4}\s*[-–]\s*\d{4})/i,
             ) || []
           )[1] ||
           "";
-      const section =
-        (fullText.match(
-          /(?:YR\/SECTION|SECTION)\s*:\s*([A-Z0-9][A-Z0-9_-]*)/i,
-        ) || [])[1] || "";
-      const records = parsePdfSchedule(pages, section);
-      if (!records.length)
-        throw Error(
-          "No schedule rows were detected. Choose a text-based CAIS Class Schedule or official registration form PDF.",
-        );
-      return { records, semester, year, pages: pdf.numPages };
+        const section =
+          (fullText.match(
+            /(?:YR\/SECTION|SECTION)\s*:\s*([A-Z0-9][A-Z0-9_-]*)/i,
+          ) || [])[1] || "";
+        const records = parsePdfSchedule(pages, section);
+        if (!records.length)
+          throw Error(
+            `No schedule rows were detected in "${file.name}". Choose text-based CAIS registration-form or Class Schedule PDFs.`,
+          );
+        documents.push({
+          file,
+          records,
+          semester,
+          year,
+          pages: pdf.numPages,
+          fullText,
+        });
+      }
+
+      const primary =
+        documents.find((document) => /REGISTRATION\s+FORM/i.test(document.fullText)) ||
+        documents[0];
+      const supplemental = documents.filter(
+        (document) => document !== primary,
+      );
+      const catalog = new Map();
+      const normalizeCode = (code) =>
+        code.toLocaleUpperCase().replace(/[^A-Z0-9]/g, "");
+      for (const document of supplemental) {
+        for (const record of document.records) {
+          const key = normalizeCode(record.subject_code);
+          if (!catalog.has(key)) catalog.set(key, new Map());
+          const names = catalog.get(key);
+          if (record.subject_name !== record.subject_code)
+            names.set(record.subject_name, (names.get(record.subject_name) || 0) + 1);
+        }
+      }
+      const matchedCodes = new Set();
+      const records = primary.records.map((record) => {
+        const names = catalog.get(normalizeCode(record.subject_code));
+        if (!names?.size || record.subject_name !== record.subject_code)
+          return record;
+        const subjectName = [...names].sort((a, b) => b[1] - a[1])[0][0];
+        matchedCodes.add(normalizeCode(record.subject_code));
+        return { ...record, subject_name: subjectName };
+      });
+      return {
+        records,
+        semester: primary.semester || documents.find((doc) => doc.semester)?.semester || "",
+        year: primary.year || documents.find((doc) => doc.year)?.year || "",
+        pages: documents.reduce((count, document) => count + document.pages, 0),
+        matchedCourses: matchedCodes.size,
+        files: files.map((file) => file.name),
+      };
     }
-    function showReview(result, file) {
+    function showReview(result) {
       pendingImport = result.records;
       $("#pdfMeta").textContent =
-        `${file.name} · ${result.pages} page(s)${result.semester ? " · " + result.semester : ""}${result.year ? " · A.Y. " + result.year : ""}`;
+        `${result.files.join(" + ")} · ${result.pages} page(s) total${result.semester ? " · " + result.semester : ""}${result.year ? " · A.Y. " + result.year : ""}`;
       $("#reviewSummary").innerHTML =
-        `<span class="pill">${result.records.length} class meetings</span><span class="pill">${new Set(result.records.map((c) => c.subject_code)).size} subjects</span><span class="pill">${result.pages} PDF pages</span>`;
+        `<span class="pill">${result.records.length} class meetings</span><span class="pill">${new Set(result.records.map((c) => c.subject_code)).size} subjects</span><span class="pill">${result.matchedCourses ? `${result.matchedCourses} course names matched` : "Course names shown as listed in PDF"}</span><span class="pill">${result.pages} PDF pages</span>`;
       $("#previewRows").innerHTML = result.records
         .map(
           (c) =>
-            `<tr><td><b>${esc(c.subject_code)}</b><br>${esc(c.subject_name)}</td><td>${DAYS[c.day]}</td><td>${c.start_time}–${c.end_time}</td><td>${esc(c.room)}</td><td>${c.units}</td></tr>`,
+            `<tr><td><b>${esc(c.subject_code)}</b><br>${esc(c.subject_name)}</td><td>${DAYS[c.day]}</td><td>${c.start_time}–${c.end_time}</td><td>${esc(c.room)}</td><td>${esc(c.instructor || "Not listed in PDF")}</td><td>${c.units}</td></tr>`,
         )
         .join("");
       $("#replaceExisting").checked = true;
@@ -648,16 +733,16 @@ import { parsePdfSchedule } from "./pdf-import.js";
     };
     $("#choosePdf").onclick = () => $("#pdfFile").click();
     $("#pdfFile").onchange = async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
+      const files = [...e.target.files];
+      if (!files.length) return;
       try {
         showLoading(
-          "Reading your schedule PDF",
-          "Extracting subjects, meeting days, times and rooms locally in your browser.",
+          files.length > 1 ? "Reading your schedule PDFs" : "Reading your schedule PDF",
+          "Matching the registration form with your Class Schedule to fill in course names. PDFs are processed locally in your browser.",
         );
-        const result = await readCaisPdf(file);
+        const result = await readCaisPdfs(files);
         hideLoading();
-        showReview(result, file);
+        showReview(result);
       } catch (err) {
         hideLoading();
         alert(err.message || "Could not read this PDF.");
@@ -704,25 +789,66 @@ import { parsePdfSchedule } from "./pdf-import.js";
       x.day = +x.day;
       x.units = +x.units;
       try {
-        data = await api("/api/classes", {
-          method: "POST",
+        data = await api(
+          editingClassId
+            ? "/api/classes/" + editingClassId
+            : "/api/classes",
+          {
+          method: editingClassId ? "PUT" : "POST",
           body: JSON.stringify(x),
-        });
+          },
+        );
         render();
+        editingClassId = null;
         e.target.reset();
+        $("#classSubmit").textContent = "Add class meeting";
+        $("#cancelClassEdit").classList.add("hidden");
+        $("#manualHeading").textContent = "Add a class meeting manually";
         say("Saved");
       } catch (err) {
         alert(err.message);
       }
     };
     $("#rows").onclick = async (e) => {
-      if (!e.target.dataset.id) return;
-      if (confirm("Delete this class meeting?")) {
+      const editId = e.target.dataset.classEdit;
+      if (editId) {
+        const c = data.classes.find((item) => item.id === editId);
+        if (!c) return;
+        editingClassId = editId;
+        for (const [key, value] of Object.entries({
+          subject_code: c.subject_code,
+          subject_name: c.subject_name,
+          section: c.section,
+          day: c.day,
+          start_time: c.start_time,
+          end_time: c.end_time,
+          room: c.room,
+          units: c.units,
+          instructor: c.instructor || "",
+        }))
+          $("#add").elements[key].value = value;
+        $("#manualHeading").textContent = "Edit class details";
+        $("#classSubmit").textContent = "Save class details";
+        $("#cancelClassEdit").classList.remove("hidden");
+        $("#manualDialog").showModal();
+        $("#add").querySelector("input[name=subject_code]").focus();
+        return;
+      }
+      const id = e.target.dataset.id;
+      if (id && confirm("Delete this class meeting?")) {
         data = await api("/api/classes/" + e.target.dataset.id, {
           method: "DELETE",
         });
         render();
       }
+    };
+    $("#cancelClassEdit").onclick = () => {
+      editingClassId = null;
+      $("#add").reset();
+      $("#classSubmit").textContent = "Add class meeting";
+      $("#cancelClassEdit").classList.add("hidden");
+      $("#manualHeading").textContent = "Add a class meeting manually";
+      $("#manualDialog").close();
     };
     $("#saveMeta").onclick = async () => {
       try {
@@ -779,6 +905,7 @@ import { parsePdfSchedule } from "./pdf-import.js";
         "start_time",
         "end_time",
         "room",
+        "instructor",
         "units",
       ],
         q = (v) => {
@@ -1056,6 +1183,11 @@ import { parsePdfSchedule } from "./pdf-import.js";
       if (!dialog.open) dialog.showModal();
     }
     $("#manualStart").onclick = $("#manualStartHero").onclick = () => {
+      editingClassId = null;
+      $("#add").reset();
+      $("#classSubmit").textContent = "Add class meeting";
+      $("#cancelClassEdit").classList.add("hidden");
+      $("#manualHeading").textContent = "Add a class meeting manually";
       openDialog("manualDialog");
       $("#add").querySelector("input[name=subject_code]").focus();
     };
@@ -1074,9 +1206,9 @@ import { parsePdfSchedule } from "./pdf-import.js";
     );
     const originalAddHandler = $("#add").onsubmit;
     $("#add").onsubmit = async (event) => {
-      const previousCount = data.classes.length;
+      const previousData = data;
       await originalAddHandler(event);
-      if (data.classes.length > previousCount) {
+      if (data !== previousData) {
         $("#manualDialog").close();
         $("#manualStart").focus();
       }
@@ -1165,6 +1297,7 @@ import { parsePdfSchedule } from "./pdf-import.js";
           c.start_time,
           c.end_time,
           c.room,
+          c.instructor,
         ]
           .join(" ")
           .toLocaleLowerCase()
@@ -1192,7 +1325,7 @@ import { parsePdfSchedule } from "./pdf-import.js";
       $("#rows").innerHTML = classes
         .map(
           (c) =>
-            `<tr><td><b>${esc(c.subject_code)}</b><br>${esc(c.subject_name)}</td><td>${esc(c.section)}</td><td>${esc(c.units)}</td><td>${DAYS[+c.day]}</td><td>${fmtTime(c.start_time)}–${fmtTime(c.end_time)}</td><td>${esc(c.room)}</td><td class="noprint"><button class="btn danger" data-id="${esc(c.id)}">Delete</button></td></tr>`,
+            `<tr><td><b>${esc(c.subject_code)}</b><br>${esc(c.subject_name)}</td><td>${esc(c.section)}</td><td>${esc(c.units)}</td><td>${DAYS[+c.day]}</td><td>${fmtTime(c.start_time)}–${fmtTime(c.end_time)}</td><td>${esc(c.room)}</td><td>${esc(c.instructor || "Not listed")}</td><td class="noprint"><button class="btn secondary" data-class-edit="${esc(c.id)}">Edit</button> <button class="btn danger" data-id="${esc(c.id)}">Delete</button></td></tr>`,
         )
         .join("");
       $("#classCount").textContent =

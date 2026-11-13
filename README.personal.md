@@ -20,7 +20,7 @@ The welcome screen stays visible after a schedule is created and includes a loop
 - Use `npm run version:patch` for compatible fixes, `npm run version:minor` for new features, and `npm run version:major` for breaking changes.
 - Keep the project pre-1.0 until its public behavior is stable. For each release, choose the bump by the most significant user-facing change and include the updated package files in the release commit.
 
-The PDF parser recognizes the text-based Class Schedule details table and the official registration form's differently arranged schedule table, including its section field. It is not OCR; scanned/image-only PDFs are not supported. Review extracted entries before confirming because the two CAIS documents can list different enrolled classes. The importer handles multiple meetings per subject and split room labels such as `Async_`.
+The PDF parser recognizes the text-based Class Schedule details table and the official registration form's differently arranged schedule table, including its section field, bracketed unit counts, and optional instructor/faculty columns when present. Select both CAIS PDFs together to fill registration-form course codes with matching course names from the Class Schedule PDF. The supplied PDFs do not list professor names; room labels are included, and instructor names can be entered manually. It is not OCR; scanned/image-only PDFs are not supported. Review extracted entries before confirming. The importer handles multiple meetings per subject and split room labels such as `Async_`.
 
 PDF.js 4.10.38 is loaded from cdnjs when the user selects a PDF. This requires an internet connection during PDF import. No PDF bytes are sent to the application backend.
 
@@ -34,12 +34,12 @@ PDF.js 4.10.38 is loaded from cdnjs when the user selects a PDF. This requires a
 - JSON backup includes both class meetings and planner tasks. JSON import can restore both.
 
 ## Live timetable and installable app
-- Default landing view is **Today**, with a switch to the seven-day weekly calendar. Class meetings remain in the timetable on their recurring weekdays. Dated personal plans appear in a separate agenda below the timetable, where overlapping class times are called out without covering either event.
+- Default landing view is **Today**, with a switch to the seven-day weekly calendar. Class meetings remain in the timetable on their recurring weekdays. A readable class agenda lists course names, rooms, sections, units, and available instructor names; dated personal plans appear separately, where overlapping class times are called out without covering either event.
 - Use **Now** to jump to the live time marker and current day. The marker stays visible at the nearest calendar edge before 7 AM and after 7 PM. The 12/24-hour preference is saved on the device and applies to the clock, calendar, agenda, and schedule details.
 - The timetable supports native full-screen mode where available, with a CSS full-screen fallback. **Display view** opens a clean schedule-only page at `/?view=display`; it refreshes schedule data every 30 seconds while open.
 - Use the **Install app** button for the browser install prompt when supported, or device-specific instructions when the browser does not provide a prompt. On iOS, use Safari's Share menu and choose Add to Home Screen.
 - The compact visual theme uses warm neutral surfaces, deep green accents, and a restrained dark theme; the preference is saved on the device.
-- Manual class entry and import/backup tools open in dialogs instead of taking up space on the main page.
+- Manual class entry and import/backup tools open in dialogs instead of taking up space on the main page. Saved classes can be edited so room and optional instructor details can be corrected after import.
 - Personal planner content is collapsed by default and opens on demand. Schedule details initially show at least three meeting rows, with search and sortable column headers.
 - A blue pulsating dot and horizontal line show current time in the timetable, using the `Asia/Manila` time zone. The Worker supplies a server timestamp when online to correct device-clock drift; offline, the last known offset is used with the device clock.
 - The live summary identifies the current class and the next class across the recurring weekly schedule, including the day and countdown.
@@ -66,7 +66,7 @@ PDF.js 4.10.38 is loaded from cdnjs when the user selects a PDF. This requires a
 - The display URL and API are suitable for a same-origin live web view. A separate DIY widget hosted on another origin is not recommended yet: browser cookie/CORS restrictions prevent safe anonymous access, while making the endpoint public would expose private class and task details. A dedicated cross-device widget would need an explicit sharing/authorization model first.
 
 ### Display API
-`GET /api/display` is read-only and requires the `__Host-clsu_device` cookie. It returns a minimal JSON object with `title`, `semester`, `academic_year`, `classes` (subject, section, weekday index, start/end time, and room), and `tasks` (title, notes, date, optional start/end time, category, and completion state). Responses are not cached and no CORS access is enabled. Open `/?view=display` for the ready-made live view; it refreshes this data every 30 seconds while visible.
+`GET /api/display` is read-only and requires the `__Host-clsu_device` cookie. It returns a minimal JSON object with `title`, `semester`, `academic_year`, `classes` (subject, section, weekday index, start/end time, room, units, and instructor), and `tasks` (title, notes, date, optional start/end time, category, and completion state). Responses are not cached and no CORS access is enabled. Open `/?view=display` for the ready-made live view; it refreshes this data every 30 seconds while visible.
 
 ## Future work: Plan B
 Automated CAIS login/PDF retrieval is intentionally not part of this application or deployment. Any future Plan B investigation must be conducted in a separate, isolated test project and only after CLSU provides explicit authorization and a supported integration method. Never use real student credentials or production session cookies in test code.
@@ -86,9 +86,9 @@ Use HTTPS (the deployed `workers.dev` URL) for service-worker and PWA installati
 ## Import formats
 JSON backup supports both `classes` and optional `tasks` arrays. A task has `title`, `task_date` (`YYYY-MM-DD`), optional `start_time` and `end_time` (`HH:MM`, both present or both blank), `category`, `priority`, `notes`, and `completed`.
 
-JSON classes: `{ "classes": [{ "subject_code":"IT 101", "subject_name":"Intro", "section":"BSIT 1-1", "day":0, "start_time":"08:00", "end_time":"09:30", "room":"Lab 1", "units":3 }] }`.
+JSON classes: `{ "classes": [{ "subject_code":"IT 101", "subject_name":"Intro", "section":"BSIT 1-1", "day":0, "start_time":"08:00", "end_time":"09:30", "room":"Lab 1", "instructor":"Instructor name", "units":3 }] }`. `instructor` is optional.
 
-CSV headers: `subject_code,subject_name,section,day,start_time,end_time,room,units`. Day is Monday=0 through Saturday=5, or a weekday name. Times are 24-hour HH:MM.
+CSV headers: `subject_code,subject_name,section,day,start_time,end_time,room,instructor,units`. Day is Monday=0 through Saturday=5, or a weekday name. Times are 24-hour HH:MM. Older CSV and JSON backups without `instructor` remain supported.
 
 ## Before public launch
 Add rate limiting, class editing, task editing, recurring personal tasks, deadline reminders, accessibility testing, stronger CSV parsing, backup/deletion policies, and a local copy of the PDF.js library if external CDN dependency is undesirable. Test PDF extraction against different CAIS semester PDFs before launch.

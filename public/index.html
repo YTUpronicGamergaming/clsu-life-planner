@@ -917,6 +917,14 @@
       margin: 12px 0;
     }
 
+    .class-agenda-item {
+      border-left: 3px solid var(--lav-dark);
+    }
+
+    :root[data-theme="dark"] .class-agenda-item {
+      background: #292536;
+    }
+
     .agenda-item {
       display: grid;
       grid-template-columns: minmax(104px, max-content) minmax(0, 1fr);
@@ -1740,6 +1748,62 @@
         flex-basis: 100%;
       }
     }
+
+    @media (max-width: 600px) {
+      body {
+        font-size: 16px;
+      }
+
+      .tick {
+        font-size: 12px;
+      }
+
+      .meeting {
+        font-size: 14px;
+        line-height: 1.25;
+      }
+
+      .today-grid .meeting {
+        font-size: 15px;
+        line-height: 1.2;
+        padding: 5px;
+      }
+
+      .schedule-table-wrap table {
+        font-size: 14px;
+      }
+
+      .today-grid .meeting-room {
+        display: none;
+      }
+
+      .agenda-time {
+        font-size: 14px;
+      }
+
+      .agenda-subject {
+        font-size: 16px;
+      }
+
+      .agenda-detail {
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .agenda-item {
+        grid-template-columns: 1fr;
+        gap: 5px;
+      }
+
+      .live-date,
+      .next-meta,
+      .task-meta,
+      .field,
+      .muted,
+      .footnote {
+        font-size: 14px;
+      }
+    }
   </style>
 </head>
 
@@ -1770,7 +1834,8 @@
         <span class="pill">YOUR WEEK, MADE EASIER</span>
         <h2>A calmer way to keep your week in view.</h2>
         <p>
-          Start with your CLSU registration-form PDF, or add meetings
+          Import your registration-form and Class Schedule PDFs together to
+          bring in your classes and their full course names, or add meetings
           yourself. Your private timetable and personal plans stay together,
           so you can spend less time organizing and more time on what matters.
         </p>
@@ -1782,8 +1847,8 @@
           <a class="btn" href="https://cais.clsu.edu.ph/student/dashboard" target="_blank" rel="noopener noreferrer"
             style="text-decoration: none" title="Open the official CAIS student dashboard in another tab">Open CAIS
             ↗</a><button class="btn secondary" id="choosePdf"
-            title="Choose your downloaded CAIS registration-form PDF. It is read on this device.">
-            Import registration PDF</button><button class="btn mint" id="manualStartHero" type="button"
+            title="Select your registration-form PDF and optional Class Schedule PDF. Both are read on this device.">
+            Import schedule PDFs</button><button class="btn mint" id="manualStartHero" type="button"
             title="Enter weekly class meetings yourself, one at a time">
             Build schedule manually
           </button>
@@ -1793,6 +1858,8 @@
           CLSU Life Planner never asks for or receives your CAIS password,
           session cookie, or CSRF token. The PDF is processed in your browser;
           only the extracted class details are sent to your private schedule.
+          Select both CAIS PDFs together to match course names to registration
+          entries. Neither supplied PDF lists professors.
           <p class="muted" style="margin: 8px 0 0">
             <b>Design acknowledgment:</b> The academic timetable concept and
             schedule workflow were informed by the CLSU CAIS experience. CLSU
@@ -1815,7 +1882,7 @@
           theme when matching light and dark versions are available.
         </p>
       </div>
-      <input type="file" id="pdfFile" accept="application/pdf,.pdf" hidden />
+      <input type="file" id="pdfFile" accept="application/pdf,.pdf" multiple hidden />
     </section>
     <section class="card noprint hidden" id="reviewCard">
       <div class="row" style="justify-content: space-between">
@@ -1837,6 +1904,7 @@
               <th>Day</th>
               <th>Time</th>
               <th>Room</th>
+              <th>Instructor</th>
               <th>Units</th>
             </tr>
           </thead>
@@ -1850,8 +1918,9 @@
           Confirm and import schedule</button><span class="status" id="reviewStatus"></span>
       </div>
       <p class="footnote">
-        Check the extracted days and times before confirming. Async rooms are
-        retained as listed on the registration form.
+        Check the extracted course names, rooms, days, and times before
+        confirming. Online and asynchronous room labels are included when
+        listed in the PDFs.
       </p>
     </section>
     <section class="card noprint" id="metaCard">
@@ -1926,6 +1995,13 @@
         <span><i class="legend-dot"></i>Class meeting</span>
         <span><i class="pulse"></i>Current time</span>
       </div>
+      <section class="calendar-plans" aria-labelledby="classAgendaHeading">
+        <h3 class="calendar-plans-heading" id="classAgendaHeading">Class details for today</h3>
+        <p class="muted" id="classAgendaDescription">
+          Full course names, rooms, sections, and units are listed here.
+        </p>
+        <div class="today-agenda" id="classAgenda"></div>
+      </section>
       <section class="calendar-plans" aria-labelledby="calendarPlansHeading">
         <h3 class="calendar-plans-heading" id="calendarPlansHeading">Personal plans for today</h3>
         <p class="muted" id="calendarPlansDescription">
@@ -2038,9 +2114,12 @@
             </select></label><label class="field">Start<input name="start_time" type="time" value="07:00"
               required /></label><label class="field">End<input name="end_time" type="time" value="08:30"
               required /></label><label class="field">Room<input name="room" /></label><label class="field">Units<input
-              name="units" type="number" min="0" max="30" value="3" /></label>
+                  name="units" type="number" min="0" max="30" value="3" /></label><label
+                  class="field">Instructor (optional)<input name="instructor" maxlength="120"
+                    placeholder="Professor or instructor name" /></label>
           <div class="wide modal-actions">
-            <button class="btn">Add class meeting</button>
+            <button class="btn" id="classSubmit">Add class meeting</button>
+            <button class="btn secondary hidden" id="cancelClassEdit" type="button">Cancel edit</button>
           </div>
         </form>
       </div>
@@ -2050,8 +2129,8 @@
         <h2>
           Schedule details <span class="collapse-hint" id="classCount"></span>
         </h2>
-        <input class="schedule-search" id="classSearch" type="search" placeholder="Search subject, day, room…"
-          aria-label="Search class meetings" title="Filter by subject, section, day, time, units, or room" /><button
+        <input class="schedule-search" id="classSearch" type="search" placeholder="Search subject, instructor, room…"
+          aria-label="Search class meetings" title="Filter by subject, section, day, time, units, room, or instructor" /><button
           class="btn secondary" id="detailsToggle" type="button" aria-expanded="false" aria-controls="scheduleTableWrap"
           title="Show more or fewer schedule rows">
           Show all
@@ -2096,6 +2175,11 @@
                   Room ↕
                 </button>
               </th>
+              <th aria-sort="none">
+                <button class="sort-button" data-sort="instructor" type="button" title="Sort by instructor">
+                  Instructor ↕
+                </button>
+              </th>
               <th class="noprint">Action</th>
             </tr>
           </thead>
@@ -2123,7 +2207,7 @@
       <p class="muted">
         Import an existing JSON or CSV schedule backup. CSV headers:
         subject_code, subject_name, section, day, start_time, end_time, room,
-        units.
+        instructor, units.
       </p>
       <label class="field">Choose a JSON or CSV backup<input type="file" id="file"
           accept=".json,.csv,application/json,text/csv" /></label>

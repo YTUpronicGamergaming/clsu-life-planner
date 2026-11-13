@@ -1,0 +1,1 @@
+ALTER TABLE classes ADD COLUMN instructor TEXT NOT NULL DEFAULT '';

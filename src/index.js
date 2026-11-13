@@ -84,6 +84,10 @@ function validate(c) {
     !String(c.subject_name || "").trim()
   )
     return "Subject code and name are required";
+  if (c.instructor != null && typeof c.instructor !== "string")
+    return "Instructor must be text";
+  if (String(c.instructor || "").trim().length > 120)
+    return "Instructor must be 120 characters or fewer";
   if (
     !Number.isInteger(Number(c.day)) ||
     Number(c.day) < 0 ||
@@ -157,7 +161,7 @@ async function schedule(env, device) {
     s = { id, title: "My CLSU Life Planner", semester: "", academic_year: "" };
   }
   const { results } = await env.DB.prepare(
-    "SELECT id,subject_code,subject_name,section,day,start_time,end_time,room,units FROM classes WHERE schedule_id=? ORDER BY day,start_time",
+    "SELECT id,subject_code,subject_name,section,day,start_time,end_time,room,units,instructor FROM classes WHERE schedule_id=? ORDER BY day,start_time",
   )
     .bind(s.id)
     .all();
@@ -183,7 +187,7 @@ async function displaySchedule(env, device) {
       tasks: [],
     };
   const classes = await env.DB.prepare(
-    "SELECT subject_code,subject_name,section,day,start_time,end_time,room FROM classes WHERE schedule_id=? ORDER BY day,start_time",
+    "SELECT subject_code,subject_name,section,day,start_time,end_time,room,units,instructor FROM classes WHERE schedule_id=? ORDER BY day,start_time",
   )
     .bind(s.id)
     .all();
@@ -322,7 +326,7 @@ async function api(req, env) {
     const e = validate(c);
     if (e) return json({ error: e }, 400);
     await env.DB.prepare(
-      "INSERT INTO classes(id,schedule_id,subject_code,subject_name,section,day,start_time,end_time,room,units) VALUES(?,?,?,?,?,?,?,?,?,?)",
+      "INSERT INTO classes(id,schedule_id,subject_code,subject_name,section,day,start_time,end_time,room,units,instructor) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
     )
       .bind(
         crypto.randomUUID(),
@@ -335,9 +339,40 @@ async function api(req, env) {
         c.end_time,
         String(c.room || ""),
         Number(c.units || 0),
+        String(c.instructor || "").trim(),
       )
       .run();
     return json(await schedule(env, id), 201);
+  }
+  if ((m === "PUT" || m === "PATCH") && p.startsWith("/api/classes/")) {
+    let c;
+    try {
+      c = await req.json();
+    } catch {
+      return json({ error: "Invalid JSON" }, 400);
+    }
+    const e = validate(c);
+    if (e) return json({ error: e }, 400);
+    const result = await env.DB.prepare(
+      "UPDATE classes SET subject_code=?,subject_name=?,section=?,day=?,start_time=?,end_time=?,room=?,units=?,instructor=? WHERE id=? AND schedule_id=?",
+    )
+      .bind(
+        String(c.subject_code).trim(),
+        String(c.subject_name).trim(),
+        String(c.section || ""),
+        Number(c.day),
+        c.start_time,
+        c.end_time,
+        String(c.room || ""),
+        Number(c.units || 0),
+        String(c.instructor || "").trim(),
+        p.slice(13),
+        s.id,
+      )
+      .run();
+    if (!result.meta.changes)
+      return json({ error: "Class meeting not found" }, 404);
+    return json(await schedule(env, id));
   }
   if (m === "DELETE" && p === "/api/classes") {
     await env.DB.prepare("DELETE FROM classes WHERE schedule_id=?")
@@ -381,7 +416,7 @@ async function api(req, env) {
       );
     const stmts = b.classes.map((c) =>
       env.DB.prepare(
-        "INSERT INTO classes(id,schedule_id,subject_code,subject_name,section,day,start_time,end_time,room,units) VALUES(?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO classes(id,schedule_id,subject_code,subject_name,section,day,start_time,end_time,room,units,instructor) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
       ).bind(
         crypto.randomUUID(),
         s.id,
@@ -393,6 +428,7 @@ async function api(req, env) {
         c.end_time,
         String(c.room || ""),
         Number(c.units || 0),
+        String(c.instructor || "").trim(),
       ),
     );
     if (b.replace === true)

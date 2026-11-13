@@ -49,6 +49,7 @@ function render(schedule) {
           .join(" · "),
       );
       addCell(row, item.room);
+      addCell(row, item.instructor || "Not listed");
       classBody.append(row);
     });
   get("#noClasses").hidden = classes.length > 0;

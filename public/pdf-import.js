@@ -6,6 +6,21 @@ function normalizeHeader(value) {
   if (label === "day" || label === "days") return "days";
   if (label === "time") return "time";
   if (label === "room") return "room";
+  if (
+    [
+      "faculty",
+      "facultyname",
+      "instructor",
+      "instructorname",
+      "instructors",
+      "prof",
+      "professor",
+      "professorname",
+      "teacher",
+      "teachername",
+    ].includes(label)
+  )
+    return "instructor";
   return "";
 }
 
@@ -135,7 +150,7 @@ function parsePage(lines, sectionFallback) {
       !subject ||
       !cells.days ||
       !cells.time ||
-      !/^\d+(?:\.\d+)?$/.test(cells.units || "")
+      !/^\[?\d+(?:\.\d+)?\]?$/.test(cells.units || "")
     )
       continue;
 
@@ -169,12 +184,15 @@ function parsePage(lines, sectionFallback) {
       records.push({
         subject_code: subject,
         subject_name: subjectNameForLine(line, lines, columns) || subject,
-        section: cells.section || sectionFallback,
-        units: Number(cells.units),
+        section: (cells.section || sectionFallback).replace(/_/g, " ").trim(),
+        units: Number(cells.units.replace(/[\[\]]/g, "")),
         day,
         start_time,
         end_time,
-        room: roomParts[index] || roomParts[0] || "",
+        room: (roomParts[index] || roomParts[0] || "")
+          .replace(/_+$/g, "")
+          .trim(),
+        instructor: cells.instructor || "",
       });
     });
   }
