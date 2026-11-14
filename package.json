@@ -1,6 +1,6 @@
 {
   "name": "clsu-schedule",
-  "version": "0.12.8",
+  "version": "0.12.9",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,7 +9,7 @@
     "maint:on": "wrangler deploy --var MAINTENANCE_MODE:true",
     "maint:off": "wrangler deploy --var MAINTENANCE_MODE:false",
     "start": "wrangler dev",
-    "test": "vitest",
+    "test": "node --test",
     "cf-typegen": "wrangler types",
     "db:local": "wrangler d1 migrations apply DB --local",
     "db:remote": "wrangler d1 migrations apply DB --remote",
@@ -18,6 +18,6 @@
     "version:major": "npm version major --no-git-tag-version"
   },
   "devDependencies": {
-    "wrangler": "^4.0.0"
+    "wrangler": "^4.162.0"
   }
 }

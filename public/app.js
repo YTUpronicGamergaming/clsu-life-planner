@@ -980,17 +980,27 @@ import { parsePdfSchedule } from "./pdf-import.js";
           start_time: c.start_time || c.start,
           end_time: c.end_time || c.end,
         }));
-        let hasTasks = Array.isArray(raw.tasks),
-          tasks = hasTasks ? raw.tasks : [];
+        let tasks =
+          Array.isArray(raw) || raw.tasks === undefined ? [] : raw.tasks;
+        if (!Array.isArray(tasks))
+          throw Error("Expected planner tasks array");
         if (
           !confirm(
-            `Import ${classes.length} class meeting(s) and ${tasks.length} planner task(s)?`,
+            `Replace all existing classes and planner tasks with ${classes.length} class meeting(s) and ${tasks.length} planner task(s) from this backup?`,
           )
         )
           return;
         data = await api("/api/import", {
           method: "POST",
-          body: JSON.stringify({ classes, tasks, replace_tasks: hasTasks }),
+          body: JSON.stringify({
+            classes,
+            tasks,
+            replace: true,
+            replace_tasks: true,
+            title: raw.title,
+            semester: raw.semester,
+            academic_year: raw.academic_year,
+          }),
         });
         render();
         say("Imported");

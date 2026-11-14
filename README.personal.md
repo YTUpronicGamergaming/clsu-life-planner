@@ -74,14 +74,15 @@ Automated CAIS login/PDF retrieval is intentionally not part of this application
 ## Setup
 1. Install Node.js LTS.
 2. Run `npm install`.
-3. Authenticate: `npx wrangler login`.
-4. Create D1: `npx wrangler d1 create clsu-schedule-db`.
-5. Copy the returned database ID into `wrangler.jsonc`, replacing `REPLACE_WITH_D1_DATABASE_ID`.
-6. Run `npm run db:local` and `npm run dev`.
-7. Apply production migration: `npm run db:remote`.
-8. Deploy: `npm run deploy`.
+3. Run `npm test` to verify the Worker request handling.
+4. Authenticate: `npx wrangler login`.
+5. Create D1: `npx wrangler d1 create clsu-life-planner-db`.
+6. Replace the `database_id` in `wrangler.jsonc` with the ID returned by Wrangler.
+7. Run `npm run db:local` and `npm run dev`.
+8. Apply production migration: `npm run db:remote`.
+9. Deploy: `npm run deploy`.
 
-Use HTTPS (the deployed `workers.dev` URL) for service-worker and PWA installation. The URL will be `https://clsu-schedule.<your-workers-subdomain>.workers.dev`.
+Use HTTPS (the deployed `workers.dev` URL) for service-worker and PWA installation. The URL will be `https://clsu-life-planner.<your-workers-subdomain>.workers.dev`.
 
 ## Import formats
 JSON backup supports both `classes` and optional `tasks` arrays. A task has `title`, `task_date` (`YYYY-MM-DD`), optional `start_time` and `end_time` (`HH:MM`, both present or both blank), `category`, `priority`, `notes`, and `completed`.
@@ -91,4 +92,4 @@ JSON classes: `{ "classes": [{ "subject_code":"IT 101", "subject_name":"Intro", 
 CSV headers: `subject_code,subject_name,section,day,start_time,end_time,room,instructor,units`. Day is Monday=0 through Saturday=5, or a weekday name. Times are 24-hour HH:MM. Older CSV and JSON backups without `instructor` remain supported.
 
 ## Before public launch
-Add rate limiting, class editing, task editing, recurring personal tasks, deadline reminders, accessibility testing, stronger CSV parsing, backup/deletion policies, and a local copy of the PDF.js library if external CDN dependency is undesirable. Test PDF extraction against different CAIS semester PDFs before launch.
+Add rate limiting, recurring personal tasks, deadline reminders, accessibility testing, stronger CSV parsing, backup/deletion policies, and a local copy of the PDF.js library if external CDN dependency is undesirable. Test PDF extraction against different CAIS semester PDFs before launch.

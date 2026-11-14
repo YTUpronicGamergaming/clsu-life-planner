@@ -303,6 +303,8 @@ async function api(req, env) {
     } catch {
       return json({ error: "Invalid JSON" }, 400);
     }
+    if (!b || typeof b !== "object" || Array.isArray(b))
+      return json({ error: "Expected schedule object" }, 400);
     await env.DB.prepare(
       "UPDATE schedules SET title=?,semester=?,academic_year=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND device_id=?",
     )
@@ -394,6 +396,8 @@ async function api(req, env) {
     } catch {
       return json({ error: "Invalid JSON" }, 400);
     }
+    if (!b || typeof b !== "object" || Array.isArray(b))
+      return json({ error: "Expected import object" }, 400);
     if (!Array.isArray(b.classes) || b.classes.length > 150)
       return json({ error: "Expected classes array (max 150)" }, 400);
     const errors = b.classes
@@ -458,18 +462,30 @@ async function api(req, env) {
           t.completed ? 1 : 0,
         ),
       );
-    if (stmts.length) await env.DB.batch(stmts);
-    if (typeof b.semester === "string" || typeof b.academic_year === "string")
-      await env.DB.prepare(
-        "UPDATE schedules SET semester=?,academic_year=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND device_id=?",
-      )
-        .bind(
-          String(b.semester || "").slice(0, 80),
-          String(b.academic_year || "").slice(0, 40),
+    if (
+      typeof b.title === "string" ||
+      typeof b.semester === "string" ||
+      typeof b.academic_year === "string"
+    )
+      stmts.push(
+        env.DB.prepare(
+          "UPDATE schedules SET title=?,semester=?,academic_year=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND device_id=?",
+        ).bind(
+          (typeof b.title === "string" ? b.title : s.title).slice(0, 100),
+          (typeof b.semester === "string" ? b.semester : s.semester).slice(
+            0,
+            80,
+          ),
+          (
+            typeof b.academic_year === "string"
+              ? b.academic_year
+              : s.academic_year
+          ).slice(0, 40),
           s.id,
           id,
-        )
-        .run();
+        ),
+      );
+    if (stmts.length) await env.DB.batch(stmts);
     return json(await schedule(env, id), 201);
   }
   if (m === "POST" && p === "/api/tasks") {
@@ -534,6 +550,8 @@ async function api(req, env) {
     } catch {
       return json({ error: "Invalid JSON" }, 400);
     }
+    if (!b || typeof b !== "object" || Array.isArray(b))
+      return json({ error: "Expected completion object" }, 400);
     if (typeof b.completed !== "boolean")
       return json({ error: "completed must be boolean" }, 400);
     const tid = p.slice(11, -9);
